@@ -1,0 +1,404 @@
+*,*::before,*::after{box-sizing:border-box}
+
+body{
+  margin:0;
+  overflow:hidden;
+  background:#1a1a2e;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  color:#fff;
+}
+
+#gameCanvas{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:0;
+  display:block;
+}
+
+.panel{
+  z-index:10;
+  position:absolute;
+  background:rgba(30,30,45,0.95);
+  border-radius:12px;
+  color:#fff;
+  padding:15px;
+}
+
+.modal{
+  z-index:20;
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+
+.modal.hidden{
+  display:none;
+}
+
+.modal-content{
+  background:rgba(30,30,45,0.98);
+  border-radius:12px;
+  padding:20px;
+  min-width:340px;
+  max-width:480px;
+  max-height:80vh;
+  overflow-y:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+}
+
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:15px;
+}
+
+.modal-header h3{
+  margin:0;
+  font-size:1.2em;
+}
+
+.modal-body{
+  margin-bottom:15px;
+}
+
+.modal-body label{
+  display:flex;
+  flex-direction:column;
+  margin-bottom:10px;
+  font-size:0.9em;
+  gap:4px;
+}
+
+.modal-footer{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+}
+
+.close-btn{
+  background:none;
+  border:none;
+  color:#aaa;
+  font-size:1.5em;
+  cursor:pointer;
+  line-height:1;
+  padding:0 4px;
+  transition:color 0.2s;
+}
+
+.close-btn:hover{
+  color:#fff;
+}
+
+/* ---- Buttons ---- */
+
+button{
+  border:none;
+  border-radius:8px;
+  padding:8px 16px;
+  font-size:0.9em;
+  cursor:pointer;
+  color:#fff;
+  background:#444;
+  transition:background 0.2s,transform 0.1s;
+}
+
+button:hover{
+  transform:scale(1.03);
+}
+
+button:active{
+  transform:scale(0.97);
+}
+
+.btn-play{background:#27ae60}
+.btn-play:hover{background:#2ecc71}
+.btn-pause{background:#f39c12}
+.btn-pause:hover{background:#f1c40f}
+.btn-stop{background:#c0392b}
+.btn-stop:hover{background:#e74c3c}
+.btn-reset{background:#2980b9}
+.btn-reset:hover{background:#3498db}
+.btn-step{background:#8e44ad}
+.btn-step:hover{background:#9b59b6}
+.btn-secondary{background:#555}
+.btn-secondary:hover{background:#777}
+
+/* ---- Inputs ---- */
+
+input[type="text"],
+input[type="number"],
+select{
+  background:#333;
+  color:#fff;
+  border:1px solid #555;
+  border-radius:6px;
+  padding:6px 10px;
+  font-size:0.9em;
+  outline:none;
+  transition:border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus{
+  border-color:#3498db;
+}
+
+input[type="checkbox"]{
+  accent-color:#3498db;
+  margin-right:6px;
+}
+
+/* ---- Main Menu ---- */
+
+#main-menu{
+  position:fixed;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  z-index:15;
+  text-align:center;
+  background:rgba(20,20,35,0.97);
+  border-radius:16px;
+  padding:40px 50px;
+  box-shadow:0 0 60px rgba(52,152,219,0.25);
+}
+
+.menu-title{
+  font-size:2.8em;
+  font-weight:900;
+  letter-spacing:4px;
+  margin:0 0 30px 0;
+  line-height:1.15;
+  background:linear-gradient(135deg,#3498db,#e74c3c,#f1c40f);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  text-shadow:none;
+  filter:drop-shadow(0 0 18px rgba(52,152,219,0.5));
+}
+
+.menu-buttons{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.menu-buttons button{
+  width:260px;
+  padding:14px 20px;
+  font-size:1.1em;
+  font-weight:600;
+  letter-spacing:1px;
+}
+
+/* ---- Build Toolbar ---- */
+
+#build-toolbar{
+  top:0;left:0;
+  width:260px;
+  height:100%;
+  border-radius:0 12px 12px 0;
+  overflow-y:auto;
+  padding-top:20px;
+}
+
+#build-toolbar h3{
+  margin:12px 0 8px 0;
+  font-size:0.85em;
+  text-transform:uppercase;
+  letter-spacing:2px;
+  color:#aaa;
+}
+
+.tool-group{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-bottom:8px;
+}
+
+.tool-btn{
+  flex:1;
+  min-width:70px;
+  padding:7px 10px;
+  font-size:0.82em;
+  background:#3a3a55;
+  border-radius:6px;
+}
+
+.tool-btn:hover{background:#4a4a6a}
+.tool-btn.active{background:#3498db;box-shadow:0 0 8px rgba(52,152,219,0.4)}
+
+.toolbar-spacer{flex:1}
+
+#build-toolbar button{
+  width:100%;
+  margin-top:4px;
+  font-size:0.85em;
+  padding:8px 12px;
+}
+
+/* ---- Sim Controls ---- */
+
+#sim-controls{
+  bottom:20px;left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 20px;
+  border-radius:12px;
+}
+
+#sim-controls button{
+  padding:10px 18px;
+  font-size:0.9em;
+  font-weight:600;
+}
+
+.speed-control{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-left:12px;
+  padding-left:12px;
+  border-left:1px solid #555;
+}
+
+.speed-control label{
+  font-size:0.85em;
+  color:#aaa;
+}
+
+.speed-control select{
+  width:70px;
+}
+
+/* ---- Battle Log ---- */
+
+#battle-log{
+  top:60px;right:0;
+  width:280px;
+  max-height:calc(100vh - 140px);
+  border-radius:12px 0 0 12px;
+  overflow-y:auto;
+}
+
+#battle-log h3{
+  margin:0 0 10px 0;
+  font-size:0.85em;
+  text-transform:uppercase;
+  letter-spacing:2px;
+  color:#aaa;
+}
+
+.log-entry{
+  padding:6px 8px;
+  margin-bottom:4px;
+  border-radius:6px;
+  font-size:0.82em;
+  background:rgba(255,255,255,0.05);
+  border-left:3px solid #3498db;
+}
+
+.log-entry.damage{border-left-color:#e74c3c}
+.log-entry.death{border-left-color:#c0392b;background:rgba(231,76,60,0.1)}
+.log-entry.spawn{border-left-color:#27ae60}
+.log-entry.system{border-left-color:#f39c12}
+
+/* ---- HUD ---- */
+
+#hud{
+  top:12px;left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:20px;
+  padding:8px 24px;
+  border-radius:8px;
+  font-size:0.82em;
+  background:rgba(30,30,45,0.85);
+}
+
+#hud span{
+  color:#ccc;
+}
+
+/* ---- Preset / Example buttons ---- */
+
+.preset-list,.examples-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.preset-btn,.example-btn{
+  text-align:left;
+  padding:10px 14px;
+  background:#3a3a55;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+}
+
+.preset-btn:hover,.example-btn:hover{
+  background:#4a4a6a;
+}
+
+.example-title{
+  font-weight:600;
+  font-size:0.95em;
+}
+
+.example-desc{
+  font-size:0.78em;
+  color:#aaa;
+  margin-top:2px;
+}
+
+/* ---- Results ---- */
+
+#winner-display{
+  font-size:1.4em;
+  font-weight:700;
+  text-align:center;
+  margin-bottom:16px;
+  color:#f1c40f;
+}
+
+#results-stats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  font-size:0.88em;
+}
+
+/* ---- Hidden utility ---- */
+
+.hidden{display:none !important}
+
+/* ---- Scrollbar ---- */
+
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.15);border-radius:3px}
+::-webkit-scrollbar-thumb{background:#444;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#555}
+
+/* ---- Responsive ---- */
+
+@media(max-width:700px){
+  .menu-title{font-size:1.8em}
+  #main-menu{padding:24px 28px}
+  .menu-buttons button{width:200px;padding:12px 16px;font-size:1em}
+  #build-toolbar{width:200px;padding:12px}
+  #battle-log{width:200px}
+  #sim-controls{padding:8px 12px;gap:6px}
+  #sim-controls button{padding:8px 12px;font-size:0.8em}
+}

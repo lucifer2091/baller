@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ball Battle Simulator</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="main-menu">
+    <h1 class="menu-title">BALL BATTLE<br>SIMULATOR</h1>
+    <div class="menu-buttons">
+      <button data-action="create">CREATE</button>
+      <button data-action="random-battle">RANDOM BATTLE</button>
+      <button data-action="examples">EXAMPLES</button>
+      <button data-action="settings">SETTINGS</button>
+    </div>
+  </div>
+
+  <div id="build-toolbar" class="panel hidden">
+    <h3>Tools</h3>
+    <div class="tool-group">
+      <button data-tool="select" class="tool-btn active">Select</button>
+      <button data-tool="move" class="tool-btn">Move</button>
+      <button data-tool="delete" class="tool-btn">Delete</button>
+    </div>
+    <h3>Objects</h3>
+    <div class="tool-group">
+      <button data-tool="ball" class="tool-btn">Ball</button>
+      <button data-tool="block" class="tool-btn">Block</button>
+      <button data-tool="wall" class="tool-btn">Wall</button>
+    </div>
+    <h3>Grid</h3>
+    <div class="tool-group">
+      <button data-action="toggle-grid">Toggle Grid</button>
+      <label>Size: <input type="number" id="grid-size" value="20" min="5" max="100" data-action="grid-size"></label>
+    </div>
+    <h3>Arena</h3>
+    <button data-action="arena-editor">Arena Settings</button>
+    <div class="toolbar-spacer"></div>
+    <button data-action="back-to-menu" class="btn-secondary">Menu</button>
+  </div>
+
+  <div id="sim-controls" class="panel hidden">
+    <button data-action="play" class="btn-play">PLAY</button>
+    <button data-action="pause" class="btn-pause">PAUSE</button>
+    <button data-action="stop" class="btn-stop">STOP</button>
+    <button data-action="reset" class="btn-reset">RESET</button>
+    <button data-action="step" class="btn-step">STEP</button>
+    <div class="speed-control">
+      <label>Speed:</label>
+      <select id="speed-select" data-action="speed">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+        <option value="8">8x</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="battle-log" class="panel hidden">
+    <h3>Battle Log</h3>
+    <div id="log-entries"></div>
+  </div>
+
+  <div id="ball-editor" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Ball</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Name: <input type="text" id="ball-name" data-prop="name"></label>
+        <label>HP: <input type="number" id="ball-hp" data-prop="hp" min="1" value="100"></label>
+        <label>Damage: <input type="number" id="ball-damage" data-prop="damage" min="0" value="10"></label>
+        <label>Speed: <input type="number" id="ball-speed" data-prop="speed" min="0" value="5"></label>
+        <label>Size: <input type="number" id="ball-size" data-prop="size" min="10" max="200" value="30"></label>
+        <label>Mass: <input type="number" id="ball-mass" data-prop="mass" min="1" value="10"></label>
+        <label>AI Type:
+          <select id="ball-ai" data-prop="ai">
+            <option value="aggressive">Aggressive</option>
+            <option value="defensive">Defensive</option>
+            <option value="passive">Passive</option>
+            <option value="smart">Smart</option>
+          </select>
+        </label>
+        <label>Team:
+          <select id="ball-team" data-prop="team">
+            <option value="red">Red</option>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="yellow">Yellow</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <label>Weapon:
+          <select id="ball-weapon" data-prop="weapon">
+            <option value="none">None</option>
+            <option value="projectile">Projectile</option>
+            <option value="melee">Melee</option>
+            <option value="explosion">Explosion</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button data-action="apply-ball" class="btn-play">Apply</button>
+        <button data-action="delete-ball" class="btn-stop">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="block-editor" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Block</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Name: <input type="text" id="block-name" data-prop="name"></label>
+        <label>HP: <input type="number" id="block-hp" data-prop="hp" min="1" value="200"></label>
+        <label>Width: <input type="number" id="block-width" data-prop="width" min="10" value="100"></label>
+        <label>Height: <input type="number" id="block-height" data-prop="height" min="10" value="50"></label>
+        <label>Material:
+          <select id="block-material" data-prop="material">
+            <option value="wood">Wood</option>
+            <option value="stone">Stone</option>
+            <option value="metal">Metal</option>
+            <option value="glass">Glass</option>
+            <option value="ice">Ice</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="block-breakable" data-prop="breakable"> Breakable</label>
+      </div>
+      <div class="modal-footer">
+        <button data-action="apply-block" class="btn-play">Apply</button>
+        <button data-action="delete-block" class="btn-stop">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="arena-editor" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Arena Settings</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Width: <input type="number" id="arena-width" data-prop="width" min="200" max="5000" value="1200"></label>
+        <label>Height: <input type="number" id="arena-height" data-prop="height" min="200" max="5000" value="800"></label>
+        <h4>Presets</h4>
+        <div class="preset-list">
+          <button data-preset="small" class="preset-btn">Small (800x600)</button>
+          <button data-preset="medium" class="preset-btn">Medium (1200x800)</button>
+          <button data-preset="large" class="preset-btn">Large (1920x1080)</button>
+          <button data-preset="arena" class="preset-btn">Arena (1600x900)</button>
+          <button data-preset="pit" class="preset-btn">Pit (800x1200)</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button data-action="apply-arena" class="btn-play">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-panel" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Gravity: <input type="number" id="setting-gravity" data-prop="gravity" min="0" max="5" step="0.1" value="1"></label>
+        <label>Time Scale: <input type="number" id="setting-timescale" data-prop="timescale" min="0.1" max="5" step="0.1" value="1"></label>
+        <label>Damage Multiplier: <input type="number" id="setting-damage" data-prop="damageMultiplier" min="0" max="10" step="0.5" value="1"></label>
+        <h4>Physics Presets</h4>
+        <div class="preset-list">
+          <button data-physics-preset="normal" class="preset-btn">Normal</button>
+          <button data-physics-preset="space" class="preset-btn">Space (Low Gravity)</button>
+          <button data-physics-preset="heavy" class="preset-btn">Heavy Gravity</button>
+          <button data-physics-preset="fast" class="preset-btn">Fast Time</button>
+          <button data-physics-preset="slow" class="preset-btn">Slow Motion</button>
+          <button data-physics-preset="chaos" class="preset-btn">Chaos Mode</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button data-action="apply-settings" class="btn-play">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="results-panel" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Simulation Results</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="winner-display">No winner yet</div>
+        <div id="results-stats"></div>
+      </div>
+      <div class="modal-footer">
+        <button data-action="close-results" class="btn-secondary">Close</button>
+        <button data-action="save-results" class="btn-play">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="examples-panel" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Example Simulations</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="examples-list">
+          <button data-example="1" class="example-btn">
+            <span class="example-title">Classic Duel</span>
+            <span class="example-desc">2 aggressive balls fight to the death</span>
+          </button>
+          <button data-example="2" class="example-btn">
+            <span class="example-title">Team Battle</span>
+            <span class="example-desc">4v4 red vs blue with weapons</span>
+          </button>
+          <button data-example="3" class="example-btn">
+            <span class="example-title">Gauntlet</span>
+            <span class="example-desc">1 ball vs many obstacles</span>
+          </button>
+          <button data-example="4" class="example-btn">
+            <span class="example-title">Pinball Chaos</span>
+            <span class="example-desc">20 balls in a bumpers arena</span>
+          </button>
+          <button data-example="5" class="example-btn">
+            <span class="example-title">Fortress Siege</span>
+            <span class="example-desc">Break through blocks to reach the goal</span>
+          </button>
+          <button data-example="6" class="example-btn">
+            <span class="example-title">Free For All</span>
+            <span class="example-desc">8 balls, every team for itself</span>
+          </button>
+          <button data-example="7" class="example-btn">
+            <span class="example-title">Bowling</span>
+            <span class="example-desc">Knock down block formations</span>
+          </button>
+          <button data-example="8" class="example-btn">
+            <span class="example-title">Defender</span>
+            <span class="example-desc">Protect the wall from waves</span>
+          </button>
+          <button data-example="9" class="example-btn">
+            <span class="example-title">Gravity Wells</span>
+            <span class="example-desc">Balls orbiting around heavy objects</span>
+          </button>
+          <button data-example="10" class="example-btn">
+            <span class="example-title">Speed Run</span>
+            <span class="example-desc">Fast balls racing through obstacles</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button data-action="close-examples" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud" class="panel hidden">
+    <span id="hud-mode">Mode: Build</span>
+    <span id="hud-state">State: Idle</span>
+    <span id="hud-camera">Camera: Follow</span>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/balls.js"></script>
+  <script src="js/blocks.js"></script>
+  <script src="js/arena.js"></script>
+  <script src="js/special.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
