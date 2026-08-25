@@ -236,7 +236,6 @@ window.PhysicsEngine = class PhysicsEngine {
   }
 
   setFriction(value) {
-    this.engine.gravity.friction = value;
     var allBodies = this.bodies;
     for (var i = 0; i < allBodies.length; i++) {
       allBodies[i].friction = value;

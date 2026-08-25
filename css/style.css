@@ -159,7 +159,7 @@ input[type="checkbox"]{
 
 /* ---- Main Menu ---- */
 
-#main-menu{
+#mainMenu{
   position:fixed;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
@@ -201,7 +201,7 @@ input[type="checkbox"]{
 
 /* ---- Build Toolbar ---- */
 
-#build-toolbar{
+#buildToolbar{
   top:0;left:0;
   width:260px;
   height:100%;
@@ -210,7 +210,7 @@ input[type="checkbox"]{
   padding-top:20px;
 }
 
-#build-toolbar h3{
+#buildToolbar h3{
   margin:12px 0 8px 0;
   font-size:0.85em;
   text-transform:uppercase;
@@ -239,7 +239,7 @@ input[type="checkbox"]{
 
 .toolbar-spacer{flex:1}
 
-#build-toolbar button{
+#buildToolbar button{
   width:100%;
   margin-top:4px;
   font-size:0.85em;
@@ -248,7 +248,7 @@ input[type="checkbox"]{
 
 /* ---- Sim Controls ---- */
 
-#sim-controls{
+#simControls{
   bottom:20px;left:50%;
   transform:translateX(-50%);
   display:flex;
@@ -258,7 +258,7 @@ input[type="checkbox"]{
   border-radius:12px;
 }
 
-#sim-controls button{
+#simControls button{
   padding:10px 18px;
   font-size:0.9em;
   font-weight:600;
@@ -284,7 +284,7 @@ input[type="checkbox"]{
 
 /* ---- Battle Log ---- */
 
-#battle-log{
+#battleLog{
   top:60px;right:0;
   width:280px;
   max-height:calc(100vh - 140px);
@@ -292,7 +292,7 @@ input[type="checkbox"]{
   overflow-y:auto;
 }
 
-#battle-log h3{
+#battleLog h3{
   margin:0 0 10px 0;
   font-size:0.85em;
   text-transform:uppercase;
@@ -365,7 +365,7 @@ input[type="checkbox"]{
 
 /* ---- Results ---- */
 
-#winner-display{
+#winnerDisplay{
   font-size:1.4em;
   font-weight:700;
   text-align:center;
@@ -373,7 +373,7 @@ input[type="checkbox"]{
   color:#f1c40f;
 }
 
-#results-stats{
+#resultsStats{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
@@ -395,10 +395,10 @@ input[type="checkbox"]{
 
 @media(max-width:700px){
   .menu-title{font-size:1.8em}
-  #main-menu{padding:24px 28px}
+  #mainMenu{padding:24px 28px}
   .menu-buttons button{width:200px;padding:12px 16px;font-size:1em}
-  #build-toolbar{width:200px;padding:12px}
-  #battle-log{width:200px}
-  #sim-controls{padding:8px 12px;gap:6px}
-  #sim-controls button{padding:8px 12px;font-size:0.8em}
+  #buildToolbar{width:200px;padding:12px}
+  #battleLog{width:200px}
+  #simControls{padding:8px 12px;gap:6px}
+  #simControls button{padding:8px 12px;font-size:0.8em}
 }

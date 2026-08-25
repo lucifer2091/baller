@@ -35,6 +35,28 @@ window.Game = class Game {
     this.ui.init();
     this.arena.buildArena(800, 600);
     this.ui.showMainMenu();
+
+    window.ballManager = this.ballManager;
+    window.blockManager = this.blockManager;
+
+    // Wire up effect spawning on damage/death
+    var origDamageBall = this.ballManager.damageBall.bind(this.ballManager);
+    var self = this;
+    this.ballManager.damageBall = function(ball, amount, source) {
+      var hpBefore = ball.data.hp;
+      origDamageBall(ball, amount, source);
+      var dmg = hpBefore - ball.data.hp;
+      if (dmg > 0 && ball.body) {
+        self.effects.spawnDamageNumber(ball.body.position.x, ball.body.position.y, dmg, dmg > amount);
+        self.effects.spawnHitEffect(ball.body.position.x, ball.body.position.y, ball.data.color || "#ff4444");
+        if (!ball.data.alive) {
+          self.effects.spawnDeathEffect(ball.body.position.x, ball.body.position.y, ball.data.color || "#ff4444", ball.data.size || 20);
+          var attacker = source ? (source.data ? source.data.name : "unknown") : "unknown";
+          self.log(ball.data.name + " eliminated by " + attacker, "#ff6666");
+        }
+      }
+    };
+
     this.startGameLoop();
   }
 
@@ -65,8 +87,19 @@ window.Game = class Game {
   update(dt) {
     this.camera.update(dt);
 
+    if (this.ui && typeof this.ui.updateHUD === "function") {
+      this.ui.updateHUD(this.state, this.camera);
+    }
+
     if (this.state === "Running") {
       var scaledDt = dt * this.timeScale;
+
+      // Snapshot HP before physics step to detect collision damage
+      var allBallsBefore = this.ballManager.getAllBalls();
+      for (var bi = 0; bi < allBallsBefore.length; bi++) {
+        if (allBallsBefore[bi].data) allBallsBefore[bi].data._prevHp = allBallsBefore[bi].data.hp;
+      }
+
       this.physics.step(scaledDt * 16.666);
       this.simTime += scaledDt;
       this.roundTimer += scaledDt;
@@ -85,9 +118,37 @@ window.Game = class Game {
         var aliveBalls = this.ballManager.getAliveBalls();
         for (var i = 0; i < aliveBalls.length; i++) {
           var ab = aliveBalls[i];
-          this.arena.checkBoundaries({ body: ab.body, radius: ab.data.size, alive: ab.data.alive, health: ab.data.hp, takeDamage: function(d) { ab.data.hp -= d; if (ab.data.hp <= 0) { ab.data.hp = 0; ab.data.alive = false; } } });
+          this.arena.checkBoundaries({ body: ab.body, radius: ab.data.size, alive: ab.data.alive, health: ab.data.hp, takeDamage: (function(b) { return function(d) { b.data.hp -= d; if (b.data.hp <= 0) { b.data.hp = 0; b.data.alive = false; } }; })(ab) });
         }
       }
+
+      // Detect physics collision damage not caught by damageBall wrapper
+      var allBallsAfter = this.ballManager.getAllBalls();
+      for (var ai = 0; ai < allBallsAfter.length; ai++) {
+        var b2 = allBallsAfter[ai];
+        if (!b2.data || !b2.body) continue;
+        var prevHp = b2.data._prevHp;
+        if (prevHp !== undefined && b2.data.hp < prevHp) {
+          var lost = prevHp - b2.data.hp;
+          this.effects.spawnDamageNumber(b2.body.position.x, b2.body.position.y, lost, false);
+          if (b2.data.hp <= 0 && b2.data.alive !== false) {
+            b2.data.alive = false;
+            this.effects.spawnDeathEffect(b2.body.position.x, b2.body.position.y, b2.data.color || "#ff4444", b2.data.size || 20);
+          } else if (lost > 5) {
+            this.effects.spawnHitEffect(b2.body.position.x, b2.body.position.y, b2.data.color || "#ff4444");
+          }
+        }
+        if (b2.data.hp <= 0) b2.data.alive = false;
+      }
+
+      // Detect block breakage
+      var prevBlockCount = this._prevBlockCount || this.blockManager.getAllBlocks().length;
+      var curBlockCount = this.blockManager.getAllBlocks().length;
+      if (curBlockCount < prevBlockCount) {
+        // A block was broken - spawn generic effect at center
+        this.effects.spawnBlockBreakEffect(this.arena.width / 2, this.arena.height / 2, "#aa8844");
+      }
+      this._prevBlockCount = curBlockCount;
 
       this.effects.update(scaledDt);
       this.checkWinCondition();
@@ -179,6 +240,95 @@ window.Game = class Game {
       weapons: weaponsArr,
       projectiles: projectilesArr
     });
+
+    // Render EffectsManager effects overlay
+    this._renderEffectsOverlay();
+    // Render block fragments
+    this._renderFragments();
+  }
+
+  _renderEffectsOverlay() {
+    var effs = this.effects.getEffects();
+    var ctx = this.renderer.ctx;
+    var cam = this.camera;
+    for (var ei = 0; ei < effs.length; ei++) {
+      var e = effs[ei];
+      var s = cam.worldToScreen(e.x, e.y);
+      var alpha = e.alpha !== undefined ? e.alpha : Math.max(0, e.life / e.maxLife);
+
+      if (e.type === "damageNumber") {
+        var fs = Math.max(10, Math.round(e.size * cam.zoom));
+        ctx.font = "bold " + fs + "px 'Segoe UI', Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(0,0,0," + (alpha * 0.6) + ")";
+        ctx.fillText(e.text, s.x + 1, s.y + 1);
+        ctx.fillStyle = e.color.replace(')', ',' + alpha + ')').replace('rgb', 'rgba');
+        if (e.color.indexOf('rgba') === -1 && e.color.indexOf('rgb') === -1) {
+          // hex color
+          var hex = e.color.replace('#','');
+          if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+          var num = parseInt(hex, 16);
+          var r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+          ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+        }
+        ctx.fillText(e.text, s.x, s.y);
+      } else if (e.type === "healNumber") {
+        var hfs = Math.max(10, Math.round(e.size * cam.zoom));
+        ctx.font = "bold " + hfs + "px 'Segoe UI', Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(" + 68 + "," + 255 + "," + 68 + "," + alpha + ")";
+        ctx.fillText(e.text, s.x, s.y);
+      } else if (e.type === "ring") {
+        var rr = e.size * cam.zoom;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, rr, 0, Math.PI * 2);
+        ctx.strokeStyle = this.renderer._withAlpha ? this.renderer._withAlpha(e.color, alpha * 0.8) : "rgba(255,80,80," + alpha + ")";
+        ctx.lineWidth = Math.max(2, 3 * cam.zoom);
+        ctx.stroke();
+      } else if (e.type === "flash") {
+        var fr = e.size * cam.zoom;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, fr, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,200," + (alpha * 0.5) + ")";
+        ctx.fill();
+      } else if (e.type === "particle" || e.type === "fragment") {
+        var pr = e.size * cam.zoom;
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        if (e.rotation) ctx.rotate(e.rotation);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = e.color;
+        if (e.type === "fragment") {
+          ctx.fillRect(-pr/2, -pr/2, pr, pr);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, pr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  _renderFragments() {
+    var frags = this.blockManager.fragments || [];
+    var ctx = this.renderer.ctx;
+    var cam = this.camera;
+    for (var fi = 0; fi < frags.length; fi++) {
+      var f = frags[fi];
+      var s = cam.worldToScreen(f.x, f.y);
+      var fa = Math.max(0, f.life / f.maxLife);
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(f.rotation || 0);
+      ctx.globalAlpha = fa;
+      ctx.fillStyle = f.color || "#888888";
+      var sz = (f.size || 4) * cam.zoom;
+      ctx.fillRect(-sz/2, -sz/2, sz, sz);
+      ctx.restore();
+    }
   }
 
   enterBuildMode() {
@@ -389,6 +539,8 @@ window.Game = class Game {
 
     var totalBalls = this.ballManager.getAllBalls().length;
     this.log("Random battle started: " + totalBalls + " balls across " + usedTeams.length + " teams", "#44ff44");
+    this.ui.showPanel("simControls");
+    this.ui.showPanel("battleLog");
     this.ui.updateSimControls("Playing");
   }
 
@@ -461,6 +613,8 @@ window.Game = class Game {
     var totalBalls = this.ballManager.getAllBalls().length;
     var teamCount = Object.keys(this.ballManager.teams).length;
     this.log("Loaded simulation: " + (sim.name || "Custom") + " (" + totalBalls + " balls, " + teamCount + " teams)", "#ffcc44");
+    this.ui.showPanel("simControls");
+    this.ui.showPanel("battleLog");
     this.ui.updateSimControls("Playing");
   }
 
@@ -549,15 +703,21 @@ window.Game = class Game {
         var tool = self.ui.currentTool;
         var objType = self.ui.currentObjectType;
 
-        if (tool === "ball" || objType === "Ball") {
-          var ballData = self.ui.getFormData("ballEditorPanel") || {};
+        var toolLower = (tool || "").toLowerCase();
+        var objLower = (objType || "").toLowerCase();
+        if (toolLower === "ball" || objLower === "ball") {
+          var ballData = self.ui.getFormData("ballEditor") || {};
           ballData.team = ballData.team || "Red";
           ballData.ai = ballData.ai || "Aggressive";
-          ballData.weapon = ballData.weapon || "Sword";
+          ballData.weaponType = ballData.weaponType || ballData.weapon || "Sword";
+          var sp = self.camera.screenToWorld(x, y);
+          ballData.position = { x: sp.x, y: sp.y };
           self.spawnBall(ballData);
-        } else if (tool === "block" || objType === "Block") {
-          var blockData = self.ui.getFormData("blockEditorPanel") || {};
+        } else if (toolLower === "block" || objLower === "block") {
+          var blockData = self.ui.getFormData("blockEditor") || {};
           blockData.type = blockData.material || blockData.type || "Brick";
+          var sp2 = self.camera.screenToWorld(x, y);
+          blockData.position = { x: sp2.x, y: sp2.y };
           self.spawnBlock(blockData);
         } else if (tool === "wall") {
           self.blockManager.createBlock(worldPos.x, worldPos.y, { type: "Indestructible", size: 40 });

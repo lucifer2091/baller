@@ -111,35 +111,29 @@ window.SpecialObjectManager = class SpecialObjectManager {
   }
 
   updateHealZone(ball, zone) {
-    if (typeof ball.heal === "function") {
-      ball.heal(zone.data.healRate || 5);
-    } else if (ball.health !== undefined && ball.maxHealth !== undefined) {
-      ball.health = Math.min(ball.maxHealth, ball.health + (zone.data.healRate || 5));
+    if (ball.data && ball.data.hp !== undefined) {
+      ball.data.hp = Math.min(ball.data.maxHp || ball.data.hp, ball.data.hp + (zone.data.healRate || 5));
     }
   }
 
   updateDamageZone(ball, zone) {
     const dmg = zone.data.damage || 10;
-    if (typeof ball.takeDamage === "function") {
-      ball.takeDamage(dmg);
-    } else if (ball.health !== undefined) {
-      ball.health -= dmg;
-      if (ball.health <= 0) {
-        ball.health = 0;
-        ball.alive = false;
+    if (ball.data && ball.data.hp !== undefined) {
+      ball.data.hp -= dmg;
+      if (ball.data.hp <= 0) {
+        ball.data.hp = 0;
+        ball.data.alive = false;
       }
     }
   }
 
   updateLava(ball, lava) {
     const dmg = (lava.data.damage || 25);
-    if (typeof ball.takeDamage === "function") {
-      ball.takeDamage(dmg);
-    } else if (ball.health !== undefined) {
-      ball.health -= dmg;
-      if (ball.health <= 0) {
-        ball.health = 0;
-        ball.alive = false;
+    if (ball.data && ball.data.hp !== undefined) {
+      ball.data.hp -= dmg;
+      if (ball.data.hp <= 0) {
+        ball.data.hp = 0;
+        ball.data.alive = false;
       }
     }
 
@@ -157,13 +151,11 @@ window.SpecialObjectManager = class SpecialObjectManager {
 
   updateSpike(ball, spike) {
     const dmg = (spike.data.damage || 30);
-    if (typeof ball.takeDamage === "function") {
-      ball.takeDamage(dmg);
-    } else if (ball.health !== undefined) {
-      ball.health -= dmg;
-      if (ball.health <= 0) {
-        ball.health = 0;
-        ball.alive = false;
+    if (ball.data && ball.data.hp !== undefined) {
+      ball.data.hp -= dmg;
+      if (ball.data.hp <= 0) {
+        ball.data.hp = 0;
+        ball.data.alive = false;
       }
     }
 
@@ -211,7 +203,7 @@ window.SpecialObjectManager = class SpecialObjectManager {
   }
 
   update(dt) {
-    if (typeof BallManager === "undefined" && !window.ballManager) return;
+    if (typeof window.ballManager === "undefined") return;
     const bm = window.ballManager;
     if (!bm) return;
 
@@ -219,7 +211,7 @@ window.SpecialObjectManager = class SpecialObjectManager {
 
     for (let i = 0; i < balls.length; i++) {
       const ball = balls[i];
-      if (!ball || ball.alive === false) continue;
+      if (!ball || !ball.data || ball.data.alive === false) continue;
       if (!ball.body) continue;
 
       const bx = ball.body.position.x;

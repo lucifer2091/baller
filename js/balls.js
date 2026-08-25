@@ -17,9 +17,12 @@ window.BallManager = class BallManager {
       size: config.size || defaults.size || 20,
       mass: config.mass || defaults.mass || 1,
       team: config.team || defaults.team || 'neutral',
-      ai: config.ai || defaults.ai || 'random',
+      ai: (config.ai || defaults.ai || 'random').toLowerCase(),
       color: config.color || defaults.color || '#ffffff',
       weaponType: config.weaponType || defaults.weaponType || null,
+      critChance: config.critChance || defaults.critChance || 0.05,
+      critMultiplier: config.critMultiplier || defaults.critMultiplier || 2,
+      knockback: config.knockback || defaults.knockback || 25,
       alive: true,
       lastAttackTime: 0,
       targetId: null,
@@ -30,7 +33,23 @@ window.BallManager = class BallManager {
 
     const ball = {
       id: this.nextId++,
-      body: this.physics.addBall(x, y, data.size, data.mass),
+      body: this.physics.addBall(x, y, data.size, {
+        hp: data.hp,
+        maxHp: data.maxHp,
+        damage: data.damage,
+        speed: data.speed,
+        mass: data.mass,
+        team: data.team,
+        ai: data.ai,
+        color: data.color,
+        weaponType: data.weaponType,
+        critChance: data.critChance,
+        critMultiplier: data.critMultiplier,
+        knockback: data.knockback,
+        name: data.name,
+        bounce: config.bounce,
+        friction: config.friction
+      }),
       data: data
     };
 
@@ -159,9 +178,9 @@ window.BallManager = class BallManager {
     for (const ball of this.balls) {
       if (!ball.data.alive) continue;
 
-      const ai = ball.data.ai;
+      const ai = (ball.data.ai || '').toLowerCase();
       switch (ai) {
-        case 'aggro': this.aggroAI(ball, dt); break;
+        case 'aggressive': this.aggroAI(ball, dt); break;
         case 'defensive': this.defensiveAI(ball, dt); break;
         case 'random': this.randomAI(ball, dt); break;
         case 'ranged': this.rangedAI(ball, dt); break;
@@ -178,7 +197,7 @@ window.BallManager = class BallManager {
   aggroAI(ball, dt) {
     const nearest = this.getNearestEnemy(ball);
     if (nearest.ball) {
-      this.moveBall(nearest.ball.body.position.x, nearest.ball.body.position.y);
+      this.moveBall(ball, nearest.ball.body.position.x, nearest.ball.body.position.y);
     }
   }
 
@@ -227,7 +246,7 @@ window.BallManager = class BallManager {
   meleeAI(ball, dt) {
     const nearest = this.getNearestEnemy(ball);
     if (nearest.ball) {
-      this.moveBall(nearest.ball.body.position.x, nearest.ball.body.position.y);
+      this.moveBall(ball, nearest.ball.body.position.x, nearest.ball.body.position.y);
     }
   }
 
@@ -258,7 +277,7 @@ window.BallManager = class BallManager {
     } else {
       const nearest = this.getNearestEnemy(ball);
       if (nearest.ball && nearest.distance < 150) {
-        this.moveBall(nearest.ball.body.position.x, nearest.ball.body.position.y);
+        this.moveBall(ball, nearest.ball.body.position.x, nearest.ball.body.position.y);
       }
     }
   }
@@ -293,8 +312,8 @@ window.BallManager = class BallManager {
   }
 
   createWeapon(ball) {
-    const weapons = window.PRESETS?.WEAPONS || {};
-    const weaponData = weapons[ball.data.weaponType] || weapons.melee || { damage: 10, range: 30, cooldown: 1000 };
+    const weapons = window.PRESETS?.WEAPON_TYPES || {};
+    const weaponData = weapons[ball.data.weaponType] || weapons.Sword || { damage: 10, range: 30, attackSpeed: 1.0 };
 
     const weapon = {
       id: this.nextId++,
@@ -304,7 +323,7 @@ window.BallManager = class BallManager {
         ...weaponData,
         angle: 0,
         orbitRadius: weaponData.range || 30,
-        cooldown: weaponData.cooldown || 1000,
+        cooldown: (1 / (weaponData.attackSpeed || 1)) * 1000,
         lastAttackTime: 0,
         projectiles: []
       }
@@ -322,7 +341,9 @@ window.BallManager = class BallManager {
       if (!ball.data.alive || !ball._weapons) continue;
 
       for (const weapon of ball._weapons) {
-        if (weapon.type === 'ranged') {
+        var wPreset = (window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[weapon.type]) || null;
+        var wBehavior = (wPreset && wPreset.behavior) || weapon.data.behavior || "sweep";
+        if (wBehavior === 'shoot') {
           weapon.data.angle += 0.02;
 
           if (Date.now() - weapon.data.lastAttackTime > weapon.data.cooldown) {
@@ -370,7 +391,7 @@ window.BallManager = class BallManager {
             }
           }
         } else {
-          weapon.data.angle += 0.05;
+          weapon.data.angle += 0.08;
 
           const ox = ball.body.position.x + Math.cos(weapon.data.angle) * weapon.data.orbitRadius;
           const oy = ball.body.position.y + Math.sin(weapon.data.angle) * weapon.data.orbitRadius;
@@ -398,7 +419,9 @@ window.BallManager = class BallManager {
       if (!ball.data.alive || !ball._weapons) continue;
 
       for (const weapon of ball._weapons) {
-        if (weapon.type === 'ranged') continue;
+        var cwPreset = (window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[weapon.type]) || null;
+        var cwBehavior = (cwPreset && cwPreset.behavior) || weapon.data.behavior || "sweep";
+        if (cwBehavior === 'shoot') continue;
 
         const ox = ball.body.position.x + Math.cos(weapon.data.angle) * weapon.data.orbitRadius;
         const oy = ball.body.position.y + Math.sin(weapon.data.angle) * weapon.data.orbitRadius;

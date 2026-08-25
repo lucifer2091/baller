@@ -44,10 +44,12 @@ window.UIManager = class UIManager {
       }
     });
 
-    // Bind every element with data-preset (physics preset)
+    // Bind physics preset buttons (only inside settingsPanel)
     document.addEventListener("click", function(e) {
       var btn = e.target.closest("[data-preset]");
       if (!btn) return;
+      // Only handle physics presets if inside settingsPanel
+      if (!btn.closest("#settingsPanel")) return;
       self._applyPhysicsPreset(btn.getAttribute("data-preset"));
     });
 
@@ -65,7 +67,7 @@ window.UIManager = class UIManager {
       if (!btn) return;
       var name = btn.getAttribute("data-save-name");
       if (confirm('Delete save "' + name + '"?')) {
-        self.game.saveManager.delete(name);
+        self.game.saves.delete(name);
         self._refreshSaveList();
       }
     });
@@ -77,8 +79,20 @@ window.UIManager = class UIManager {
         var val = parseFloat(this.value);
         var label = document.getElementById("gravityValue");
         if (label) label.textContent = val.toFixed(1);
-        if (self.game && self.game.engine) {
-          self.game.engine.gravity.y = val;
+        if (self.game && self.game.physics && self.game.physics.engine) {
+          self.game.physics.engine.gravity.y = val;
+        }
+      });
+    }
+
+    // Speed selector change
+    var speedSel = document.getElementById("speed-select");
+    if (speedSel) {
+      speedSel.addEventListener("change", function() {
+        var speed = parseFloat(this.value);
+        if (self.game && typeof self.game.setTimeScale === "function") {
+          self.game.setTimeScale(speed);
+          self.updateSpeedDisplay(speed);
         }
       });
     }
@@ -254,6 +268,14 @@ window.UIManager = class UIManager {
         self.showArenaEditor();
         break;
 
+      case "showBallEditor":
+        self.showBallEditor(null);
+        break;
+
+      case "showBlockEditor":
+        self.showBlockEditor(null);
+        break;
+
       case "close":
         self.hidePanel(btn.closest(".panel, .modal") ? btn.closest(".panel, .modal").id : null);
         break;
@@ -362,11 +384,11 @@ window.UIManager = class UIManager {
 
   // ──────────────────────────── MAIN MENU ────────────────────────────
   showMainMenu() {
-    this.showPanel("main-menu");
+    this.showPanel("mainMenu");
   }
 
   hideMainMenu() {
-    this.hidePanel("main-menu");
+    this.hidePanel("mainMenu");
   }
 
   // ──────────────────────────── BUILD TOOLBAR ────────────────────────────
@@ -383,16 +405,18 @@ window.UIManager = class UIManager {
 
   setActiveObjectType(type) {
     this.currentObjectType = type;
+    var normalized = type ? type.toLowerCase() : type;
     var btns = document.querySelectorAll("[data-object-type]");
     for (var i = 0; i < btns.length; i++) {
+      var bt = btns[i].getAttribute("data-object-type");
       btns[i].classList.remove("active");
-      if (btns[i].getAttribute("data-object-type") === type) {
+      if (bt && bt.toLowerCase() === normalized) {
         btns[i].classList.add("active");
       }
     }
-    if (type === "Ball") {
+    if (normalized === "ball") {
       this.showBallEditor(null);
-    } else if (type === "Block") {
+    } else if (normalized === "block") {
       this.showBlockEditor(null);
     }
   }
@@ -480,11 +504,11 @@ window.UIManager = class UIManager {
 
   // ──────────────────────────── SETTINGS ────────────────────────────
   showSettings() {
-    if (this.game && this.game.engine) {
+    if (this.game && this.game.physics && this.game.physics.engine) {
       var gravSlider = document.getElementById("gravitySlider");
       var gravLabel = document.getElementById("gravityValue");
-      if (gravSlider) gravSlider.value = this.game.engine.gravity.y;
-      if (gravLabel) gravLabel.textContent = this.game.engine.gravity.y.toFixed(1);
+      if (gravSlider) gravSlider.value = this.game.physics.engine.gravity.y;
+      if (gravLabel) gravLabel.textContent = this.game.physics.engine.gravity.y.toFixed(1);
     }
     this.showPanel("settingsPanel");
   }
@@ -514,7 +538,7 @@ window.UIManager = class UIManager {
 
   // ──────────────────────────── BATTLE LOG ────────────────────────────
   addBattleLogEntry(text, color) {
-    var logEl = document.getElementById("battleLog");
+    var logEl = document.getElementById("logEntries") || document.getElementById("battleLog");
     if (!logEl) return;
     var entry = document.createElement("div");
     entry.className = "log-entry";
@@ -531,49 +555,46 @@ window.UIManager = class UIManager {
   }
 
   clearBattleLog() {
-    var logEl = document.getElementById("battleLog");
+    var logEl = document.getElementById("logEntries") || document.getElementById("battleLog");
     if (logEl) logEl.innerHTML = "";
   }
 
   // ──────────────────────────── RESULTS ────────────────────────────
   showResults(data) {
-    var container = document.getElementById("resultsContent");
-    if (!container) {
-      this.showPanel("resultsPanel");
-      return;
-    }
-    container.innerHTML = "";
+    var winnerEl = document.getElementById("winnerDisplay");
+    var statsEl = document.getElementById("resultsStats");
 
-    if (data.winner) {
-      var h = document.createElement("h3");
-      h.textContent = "Winner: " + data.winner;
-      h.style.color = data.winnerColor || "#ffffff";
-      container.appendChild(h);
-    } else {
-      var h2 = document.createElement("h3");
-      h2.textContent = "Draw!";
-      container.appendChild(h2);
-    }
-
-    if (data.teams) {
-      var teamKeys = Object.keys(data.teams);
-      for (var i = 0; i < teamKeys.length; i++) {
-        var teamName = teamKeys[i];
-        var teamData = data.teams[teamName];
-        var div = document.createElement("div");
-        div.className = "team-stats";
-        div.innerHTML = "<strong>" + teamName + "</strong>: " +
-                        "Survivors: " + (teamData.survivors || 0) + " | " +
-                        "Damage Dealt: " + Math.round(teamData.damageDealt || 0) + " | " +
-                        "Kills: " + (teamData.kills || 0);
-        container.appendChild(div);
+    if (winnerEl) {
+      if (data.winner) {
+        winnerEl.textContent = "Winner: " + data.winner;
+        winnerEl.style.color = data.winnerColor || "#f1c40f";
+      } else {
+        winnerEl.textContent = "Draw!";
+        winnerEl.style.color = "#ffffff";
       }
     }
 
-    if (data.duration !== undefined) {
-      var d = document.createElement("p");
-      d.textContent = "Duration: " + data.duration.toFixed(1) + "s";
-      container.appendChild(d);
+    if (statsEl) {
+      statsEl.innerHTML = "";
+      if (data.teams) {
+        var teamKeys = Object.keys(data.teams);
+        for (var i = 0; i < teamKeys.length; i++) {
+          var teamName = teamKeys[i];
+          var teamData = data.teams[teamName];
+          var div = document.createElement("div");
+          div.className = "team-stats";
+          div.innerHTML = "<strong style='color:" + (teamData.color || '#fff') + "'>" + teamName + "</strong>: " +
+                          "Survivors: " + (teamData.survivors || 0) + " | " +
+                          "Damage: " + Math.round(teamData.damageDealt || 0) + " | " +
+                          "Kills: " + (teamData.kills || 0);
+          statsEl.appendChild(div);
+        }
+      }
+      if (data.duration !== undefined) {
+        var d = document.createElement("p");
+        d.textContent = "Duration: " + data.duration.toFixed(1) + "s";
+        statsEl.appendChild(d);
+      }
     }
 
     this.showPanel("resultsPanel");
@@ -584,8 +605,8 @@ window.UIManager = class UIManager {
     var container = document.getElementById("examplesList");
     if (container) container.innerHTML = "";
 
-    var examples = (window.PRESETS && PRESETS.EXAMPLES) ? PRESETS.EXAMPLES : [];
-    if (!Array.isArray(examples)) examples = [];
+    var sims = (window.PRESETS && (PRESETS.SIMULATIONS || PRESETS.EXAMPLES)) ? (PRESETS.SIMULATIONS || PRESETS.EXAMPLES) : {};
+    var examples = Array.isArray(sims) ? sims : Object.values(sims);
 
     if (container) {
       for (var i = 0; i < examples.length; i++) {
@@ -628,8 +649,10 @@ window.UIManager = class UIManager {
     }
 
     var hudBodies = document.getElementById("hudBodies");
-    if (hudBodies && this.game && this.game.engine) {
-      hudBodies.textContent = Matter.Composite.allBodies(this.game.engine.world).length;
+    if (hudBodies && this.game && this.game.physics && this.game.physics.world) {
+      hudBodies.textContent = Matter.Composite.allBodies(this.game.physics.world).length;
+    } else if (hudBodies && this.game && this.game.physics && this.game.physics.engine) {
+      hudBodies.textContent = Matter.Composite.allBodies(this.game.physics.engine.world).length;
     }
 
     var hudZoom = document.getElementById("hudZoom");
@@ -738,20 +761,24 @@ window.UIManager = class UIManager {
 
   _applySettings() {
     var gravSlider = document.getElementById("gravitySlider");
-    if (gravSlider && this.game && this.game.engine) {
-      this.game.engine.gravity.y = parseFloat(gravSlider.value);
+    if (gravSlider && this.game && this.game.physics && this.game.physics.engine) {
+      this.game.physics.engine.gravity.y = parseFloat(gravSlider.value);
+    }
+    var tsInput = document.getElementById("settingTimescale");
+    if (tsInput && this.game && typeof this.game.setTimeScale === "function") {
+      this.game.setTimeScale(parseFloat(tsInput.value) || 1);
     }
     this.addBattleLogEntry("Physics settings applied", "#aaaaaa");
   }
 
   _applyPhysicsPreset(name) {
     if (!window.PRESETS) return;
-    var presets = PRESETS.PHYSICS_PRESETS || PRESETS.physics || {};
-    var preset = presets[name];
+    var presets = PRESETS.PHYSICS_PRESETS || {};
+    var preset = presets[name] || presets[name.charAt(0).toUpperCase() + name.slice(1)];
     if (!preset) return;
-    if (this.game && this.game.engine) {
+    if (this.game && this.game.physics && this.game.physics.engine) {
       if (preset.gravity !== undefined) {
-        this.game.engine.gravity.y = preset.gravity;
+        this.game.physics.engine.gravity.y = preset.gravity;
         var gravSlider = document.getElementById("gravitySlider");
         var gravLabel = document.getElementById("gravityValue");
         if (gravSlider) gravSlider.value = preset.gravity;
@@ -795,12 +822,15 @@ window.UIManager = class UIManager {
 
   _launchExample(index) {
     if (!window.PRESETS) return;
-    var examples = (PRESETS.EXAMPLES) ? PRESETS.EXAMPLES : [];
+    var sims = (PRESETS.SIMULATIONS || PRESETS.EXAMPLES) ? (PRESETS.SIMULATIONS || PRESETS.EXAMPLES) : {};
+    var examples = Array.isArray(sims) ? sims : Object.values(sims);
     if (index < 0 || index >= examples.length) return;
     var example = examples[index];
     this.hidePanel("examplesPanel");
     this.hideMainMenu();
-    if (this.game && typeof this.game.loadExample === "function") {
+    if (this.game && typeof this.game.loadSimulation === "function") {
+      this.game.loadSimulation(example);
+    } else if (this.game && typeof this.game.loadExample === "function") {
       this.game.loadExample(example);
     } else if (this.game && typeof this.game.startRandomBattle === "function") {
       this.game.startRandomBattle(example);
@@ -817,7 +847,7 @@ window.UIManager = class UIManager {
     var container = document.getElementById("saveListContainer");
     if (!container || !this.game || !this.game.saveManager) return;
     container.innerHTML = "";
-    var saves = this.game.saveManager.getSaveList();
+    var saves = this.game.saves.getSaveList();
     if (saves.length === 0) {
       var empty = document.createElement("p");
       empty.textContent = "No saves found.";
@@ -846,7 +876,7 @@ window.UIManager = class UIManager {
       loadBtn.className = "btn btn-sm btn-primary";
       loadBtn.addEventListener("click", (function(n) {
         return function() {
-          var data = this.game.saveManager.load(n);
+          var data = this.game.saves.load(n);
           if (data && typeof this.game.loadSaveData === "function") {
             this.game.loadSaveData(data);
             this.hidePanel("saveLoadPanel");

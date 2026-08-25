@@ -9,25 +9,34 @@ window.BlockManager = class BlockManager {
 
   createBlock(x, y, config = {}) {
     const blockTypes = window.PRESETS?.BLOCK_TYPES || {};
-    const typeData = blockTypes[config.type] || {};
+    var blockTypeName = config.type || config.material || 'Brick';
+    const typeData = blockTypes[blockTypeName] || {};
     const data = {
       name: config.name || typeData.name || 'Block',
       hp: config.hp || typeData.hp || 50,
       maxHp: config.hp || typeData.hp || 50,
       breakable: config.breakable !== undefined ? config.breakable : typeData.breakable !== undefined ? typeData.breakable : true,
       color: config.color || typeData.color || '#888888',
-      material: config.material || typeData.material || 'normal',
+      material: blockTypeName,
       size: config.size || typeData.size || 30,
-      explodes: config.explodes !== undefined ? config.explodes : typeData.explodes || false,
-      respawn: config.respawn !== undefined ? config.respawn : typeData.respawn || false,
-      respawnTime: config.respawnTime || typeData.respawnTime || 5000,
+      width: config.width || config.size || typeData.size || 40,
+      height: config.height || config.size || typeData.size || 40,
+      explodes: config.explodes !== undefined ? config.explodes : (blockTypeName === 'Explosive'),
+      respawn: config.respawn !== undefined ? config.respawn : false,
+      respawnTime: config.respawnTime || 5000,
       originalColor: config.color || typeData.color || '#888888',
-      originalConfig: { ...config, type: config.type }
+      originalConfig: { ...config, type: blockTypeName }
     };
 
     const block = {
       id: this.nextId++,
-      body: this.physics.addBlock(x, y, data.size, data.size, data.material),
+      body: this.physics.addBlock(x, y, data.width || data.size || 40, data.height || data.size || 40, {
+        type: config.type || 'Brick',
+        hp: data.hp,
+        bounciness: typeData.bounciness,
+        density: typeData.density,
+        breakable: data.breakable
+      }),
       data: data
     };
 

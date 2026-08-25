@@ -55,13 +55,16 @@ window.ArenaBuilder = class ArenaBuilder {
 
     this.createWalls();
 
-    if (preset.blocks && typeof BlockManager !== "undefined" && window.blockManager) {
+    if (preset.generateBlocks && typeof window.blockManager !== "undefined") {
       const bm = window.blockManager;
-      preset.blocks.forEach(b => {
-        bm.createBlock(b.x, b.y, b.width || 60, b.height || 20, {
-          color: b.color,
-          health: b.health
-        });
+      var generated = preset.generateBlocks(this.width, this.height);
+      generated.forEach(function(b) {
+        bm.createBlock(b.x, b.y, { type: b.type || "Brick", width: b.w || 40, height: b.h || 40 });
+      });
+    } else if (preset.blocks && typeof window.blockManager !== "undefined") {
+      const bm = window.blockManager;
+      preset.blocks.forEach(function(b) {
+        bm.createBlock(b.x || 400, b.y || 300, { type: b.type || "Brick", width: b.w || b.width || 40, height: b.h || b.height || 40 });
       });
     }
   }
