@@ -182,7 +182,7 @@ window.UIManager = class UIManager {
         }
         break;
 
-      case "randomBattle":
+      case "random-battle":
         self.hideMainMenu();
         if (self.game && typeof self.game.startRandomBattle === "function") {
           self.game.startRandomBattle();
@@ -193,11 +193,15 @@ window.UIManager = class UIManager {
         self.showExamples();
         break;
 
+      case "settings":
+        self.showSettings();
+        break;
+
       case "loadSave":
         self._showLoadSaves();
         break;
 
-      case "backToMenu":
+      case "back-to-menu":
         self.hidePanel("buildToolbar");
         self.hidePanel("examplesPanel");
         self.hidePanel("saveLoadPanel");
@@ -205,6 +209,7 @@ window.UIManager = class UIManager {
         self.hidePanel("blockEditor");
         self.hidePanel("arenaEditor");
         self.hidePanel("settingsPanel");
+        self.hidePanel("resultsPanel");
         self.showMainMenu();
         break;
 
@@ -228,20 +233,65 @@ window.UIManager = class UIManager {
         if (self.game && typeof self.game.step === "function") self.game.step();
         break;
 
-      case "showBallEditor":
-        self.showBallEditor(null);
+      case "speed":
+        var sel = btn;
+        if (sel.tagName === "SELECT") {
+          var speed = parseFloat(sel.value);
+          if (self.game && typeof self.game.setTimeScale === "function") {
+            self.game.setTimeScale(speed);
+          }
+        }
         break;
 
-      case "showBlockEditor":
-        self.showBlockEditor(null);
+      case "toggle-grid":
+        self._toggleGrid();
         break;
 
-      case "showArenaEditor":
+      case "grid-size":
+        break;
+
+      case "arena-editor":
         self.showArenaEditor();
         break;
 
-      case "showSettings":
-        self.showSettings();
+      case "close":
+        self.hidePanel(btn.closest(".panel, .modal") ? btn.closest(".panel, .modal").id : null);
+        break;
+
+      case "close-results":
+        self.hidePanel("resultsPanel");
+        break;
+
+      case "close-examples":
+        self.hidePanel("examplesPanel");
+        break;
+
+      case "apply-ball":
+        self._applyBallEditor();
+        break;
+
+      case "delete-ball":
+        self._deleteSelectedBall();
+        break;
+
+      case "apply-block":
+        self._applyBlockEditor();
+        break;
+
+      case "delete-block":
+        self._deleteSelectedBlock();
+        break;
+
+      case "apply-arena":
+        self._applyArenaEditor();
+        break;
+
+      case "apply-settings":
+        self._applySettings();
+        break;
+
+      case "save-results":
+        self._saveResults();
         break;
 
       case "clearLog":
@@ -249,20 +299,20 @@ window.UIManager = class UIManager {
         break;
 
       case "zoomIn":
-        if (self.game && self.game.camera && typeof self.game.camera.zoomIn === "function") {
-          self.game.camera.zoomIn();
+        if (self.game && self.game.camera) {
+          self.game.camera.zoomAt(self.canvas.width / 2, self.canvas.height / 2, 1.3);
         }
         break;
 
       case "zoomOut":
-        if (self.game && self.game.camera && typeof self.game.camera.zoomOut === "function") {
-          self.game.camera.zoomOut();
+        if (self.game && self.game.camera) {
+          self.game.camera.zoomAt(self.canvas.width / 2, self.canvas.height / 2, 0.7);
         }
         break;
 
       case "zoomReset":
-        if (self.game && self.game.camera && typeof self.game.camera.resetView === "function") {
-          self.game.camera.resetView();
+        if (self.game && self.game.camera) {
+          self.game.camera.reset();
         }
         break;
 
@@ -272,8 +322,17 @@ window.UIManager = class UIManager {
   }
 
   // ──────────────────────────── PANEL MANAGEMENT ────────────────────────────
+  _resolveId(panelId) {
+    if (!panelId) return null;
+    if (document.getElementById(panelId)) return panelId;
+    var kebab = panelId.replace(/([A-Z])/g, "-$1").toLowerCase();
+    if (document.getElementById(kebab)) return kebab;
+    return panelId;
+  }
+
   showPanel(panelId) {
-    var el = document.getElementById(panelId);
+    var id = this._resolveId(panelId);
+    var el = id ? document.getElementById(id) : null;
     if (el) {
       el.classList.remove("hidden");
       el.style.display = "";
@@ -281,7 +340,9 @@ window.UIManager = class UIManager {
   }
 
   hidePanel(panelId) {
-    var el = document.getElementById(panelId);
+    if (!panelId) return;
+    var id = this._resolveId(panelId);
+    var el = id ? document.getElementById(id) : null;
     if (el) {
       el.classList.add("hidden");
       el.style.display = "none";
@@ -289,7 +350,8 @@ window.UIManager = class UIManager {
   }
 
   togglePanel(panelId) {
-    var el = document.getElementById(panelId);
+    var id = this._resolveId(panelId);
+    var el = id ? document.getElementById(id) : null;
     if (!el) return;
     if (el.classList.contains("hidden") || el.style.display === "none") {
       this.showPanel(panelId);
@@ -300,11 +362,11 @@ window.UIManager = class UIManager {
 
   // ──────────────────────────── MAIN MENU ────────────────────────────
   showMainMenu() {
-    this.showPanel("mainMenu");
+    this.showPanel("main-menu");
   }
 
   hideMainMenu() {
-    this.hidePanel("mainMenu");
+    this.hidePanel("main-menu");
   }
 
   // ──────────────────────────── BUILD TOOLBAR ────────────────────────────
@@ -339,58 +401,59 @@ window.UIManager = class UIManager {
   showBallEditor(ballData) {
     this.selectedObject = ballData;
     if (ballData) {
-      this.setInputValue("ballEditorPanel", "ballName", ballData.name || "");
-      this.setInputValue("ballEditorPanel", "ballHp", ballData.hp || ballData.maxHp || 100);
-      this.setInputValue("ballEditorPanel", "ballDamage", ballData.damage || 10);
-      this.setInputValue("ballEditorPanel", "ballSpeed", ballData.speed || 3);
-      this.setInputValue("ballEditorPanel", "ballSize", ballData.size || 18);
-      this.setInputValue("ballEditorPanel", "ballMass", ballData.mass || 1);
-      this._setSelectValue("ballTeam", ballData.team || "red");
+      this.setInputValue("ballEditor", "ballName", ballData.name || "");
+      this.setInputValue("ballEditor", "ballHp", ballData.hp || ballData.maxHp || 100);
+      this.setInputValue("ballEditor", "ballDamage", ballData.damage || 10);
+      this.setInputValue("ballEditor", "ballSpeed", ballData.speed || 3);
+      this.setInputValue("ballEditor", "ballSize", ballData.size || 18);
+      this.setInputValue("ballEditor", "ballMass", ballData.mass || 1);
+      this._setSelectValue("ballTeam", ballData.team || "Red");
       this._setSelectValue("ballAi", ballData.ai || "aggressive");
-      this._setSelectValue("ballWeapon", ballData.weapon || "melee");
+      this._setSelectValue("ballWeapon", ballData.weaponType || "Sword");
     } else {
-      this.setInputValue("ballEditorPanel", "ballName", "");
-      this.setInputValue("ballEditorPanel", "ballHp", 100);
-      this.setInputValue("ballEditorPanel", "ballDamage", 10);
-      this.setInputValue("ballEditorPanel", "ballSpeed", 3);
-      this.setInputValue("ballEditorPanel", "ballSize", 18);
-      this.setInputValue("ballEditorPanel", "ballMass", 1);
-      this._setSelectValue("ballTeam", "red");
+      this.setInputValue("ballEditor", "ballName", "");
+      this.setInputValue("ballEditor", "ballHp", 100);
+      this.setInputValue("ballEditor", "ballDamage", 10);
+      this.setInputValue("ballEditor", "ballSpeed", 3);
+      this.setInputValue("ballEditor", "ballSize", 30);
+      this.setInputValue("ballEditor", "ballMass", 10);
+      this._setSelectValue("ballTeam", "Red");
       this._setSelectValue("ballAi", "aggressive");
-      this._setSelectValue("ballWeapon", "melee");
+      this._setSelectValue("ballWeapon", "Sword");
     }
-    this.showPanel("ballEditorPanel");
+    this.showPanel("ballEditor");
   }
 
   // ──────────────────────────── BLOCK EDITOR ────────────────────────────
   showBlockEditor(blockData) {
     this.selectedObject = blockData;
     if (blockData) {
-      this.setInputValue("blockEditorPanel", "blockName", blockData.name || "");
-      this.setInputValue("blockEditorPanel", "blockHp", blockData.hp || blockData.maxHp || 50);
-      this.setInputValue("blockEditorPanel", "blockSize", blockData.size || 40);
-      this._setSelectValue("blockMaterial", blockData.material || "wood");
+      this.setInputValue("blockEditor", "blockName", blockData.name || "");
+      this.setInputValue("blockEditor", "blockHp", blockData.hp || blockData.maxHp || 50);
+      this.setInputValue("blockEditor", "blockWidth", blockData.width || 100);
+      this.setInputValue("blockEditor", "blockHeight", blockData.height || 50);
+      this._setSelectValue("blockMaterial", blockData.material || "Brick");
       var cb = document.getElementById("blockBreakable");
       if (cb) cb.checked = blockData.breakable !== false;
     } else {
-      this.setInputValue("blockEditorPanel", "blockName", "");
-      this.setInputValue("blockEditorPanel", "blockHp", 50);
-      this.setInputValue("blockEditorPanel", "blockSize", 40);
-      this._setSelectValue("blockMaterial", "wood");
+      this.setInputValue("blockEditor", "blockName", "");
+      this.setInputValue("blockEditor", "blockHp", 200);
+      this.setInputValue("blockEditor", "blockWidth", 100);
+      this.setInputValue("blockEditor", "blockHeight", 50);
+      this._setSelectValue("blockMaterial", "Brick");
       var cb2 = document.getElementById("blockBreakable");
       if (cb2) cb2.checked = true;
     }
-    this.showPanel("blockEditorPanel");
+    this.showPanel("blockEditor");
   }
 
   // ──────────────────────────── ARENA EDITOR ────────────────────────────
   showArenaEditor() {
     var w = document.getElementById("arenaWidth");
     var h = document.getElementById("arenaHeight");
-    if (w && this.game) w.value = this.game.arenaWidth || 1200;
-    if (h && this.game) h.value = this.game.arenaHeight || 700;
+    if (w && this.game) w.value = this.game.arena ? this.game.arena.width : 1200;
+    if (h && this.game) h.value = this.game.arena ? this.game.arena.height : 800;
 
-    // Populate presets
     var container = document.getElementById("arenaPresetList");
     if (container) {
       container.innerHTML = "";
@@ -402,16 +465,17 @@ window.UIManager = class UIManager {
         btn.textContent = name;
         btn.className = "btn btn-sm";
         btn.setAttribute("data-preset", name);
+        var self = this;
         btn.addEventListener("click", (function(n) {
           return function() {
-            self._applyArenaPreset(n);
+            self.game.loadArenaPreset(n);
+            self.hidePanel("arenaEditor");
           };
         })(name));
         container.appendChild(btn);
       }
-      var self = this;
     }
-    this.showPanel("arenaEditorPanel");
+    this.showPanel("arenaEditor");
   }
 
   // ──────────────────────────── SETTINGS ────────────────────────────
@@ -621,18 +685,18 @@ window.UIManager = class UIManager {
 
   // ──────────────────────────── INTERNAL ────────────────────────────
   _saveBall() {
-    var data = this.getFormData("ballEditorPanel");
+    var data = this.getFormData("ballEditor");
     var ballConfig = {
       name: data.ballName || "Ball",
       hp: data.ballHp || 100,
       maxHp: data.ballHp || 100,
       damage: data.ballDamage || 10,
       speed: data.ballSpeed || 3,
-      size: data.ballSize || 18,
-      mass: data.ballMass || 1,
-      team: data.ballTeam || "red",
+      size: data.ballSize || 30,
+      mass: data.ballMass || 10,
+      team: data.ballTeam || "Red",
       ai: data.ballAi || "aggressive",
-      weapon: data.ballWeapon || "melee"
+      weaponType: data.ballWeapon || "Sword"
     };
     if (this.selectedObject && this.selectedObject.id) {
       ballConfig.id = this.selectedObject.id;
@@ -644,13 +708,14 @@ window.UIManager = class UIManager {
   }
 
   _saveBlock() {
-    var data = this.getFormData("blockEditorPanel");
+    var data = this.getFormData("blockEditor");
     var blockConfig = {
       name: data.blockName || "Block",
-      hp: data.blockHp || 50,
-      maxHp: data.blockHp || 50,
-      size: data.blockSize || 40,
-      material: data.blockMaterial || "wood",
+      hp: data.blockHp || 200,
+      maxHp: data.blockHp || 200,
+      width: data.blockWidth || 100,
+      height: data.blockHeight || 50,
+      material: data.blockMaterial || "Brick",
       breakable: data.blockBreakable !== false
     };
     if (this.selectedObject && this.selectedObject.id) {
@@ -712,6 +777,21 @@ window.UIManager = class UIManager {
     }
     this.addBattleLogEntry("Applied arena preset: " + name, "#88aa88");
   }
+
+  _applyBallEditor() { this._saveBall(); this.hidePanel("ballEditor"); }
+  _applyBlockEditor() { this._saveBlock(); this.hidePanel("blockEditor"); }
+  _applyArenaEditor() {
+    this._saveArena();
+    var bt = document.getElementById("boundaryType");
+    if (bt && this.game && this.game.arena) {
+      this.game.arena.setBoundaryType(bt.value);
+    }
+    this.hidePanel("arenaEditor");
+  }
+  _deleteSelectedBall() { this.hidePanel("ballEditor"); }
+  _deleteSelectedBlock() { this.hidePanel("blockEditor"); }
+  _saveResults() { this.hidePanel("resultsPanel"); }
+  _toggleGrid() { this.addBattleLogEntry("Grid toggled", "#aaaaaa"); }
 
   _launchExample(index) {
     if (!window.PRESETS) return;

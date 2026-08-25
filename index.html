@@ -9,7 +9,7 @@
 <body>
   <canvas id="gameCanvas"></canvas>
 
-  <div id="main-menu">
+  <div id="mainMenu">
     <h1 class="menu-title">BALL BATTLE<br>SIMULATOR</h1>
     <div class="menu-buttons">
       <button data-action="create">CREATE</button>
@@ -19,7 +19,7 @@
     </div>
   </div>
 
-  <div id="build-toolbar" class="panel hidden">
+  <div id="buildToolbar" class="panel hidden">
     <h3>Tools</h3>
     <div class="tool-group">
       <button data-tool="select" class="tool-btn active">Select</button>
@@ -28,14 +28,14 @@
     </div>
     <h3>Objects</h3>
     <div class="tool-group">
-      <button data-tool="ball" class="tool-btn">Ball</button>
-      <button data-tool="block" class="tool-btn">Block</button>
-      <button data-tool="wall" class="tool-btn">Wall</button>
+      <button data-object-type="ball" class="tool-btn">Ball</button>
+      <button data-object-type="block" class="tool-btn">Block</button>
+      <button data-object-type="wall" class="tool-btn">Wall</button>
     </div>
-    <h3>Grid</h3>
+    <h3>Quick Spawn</h3>
     <div class="tool-group">
-      <button data-action="toggle-grid">Toggle Grid</button>
-      <label>Size: <input type="number" id="grid-size" value="20" min="5" max="100" data-action="grid-size"></label>
+      <button data-action="showBallEditor" class="btn btn-primary">Add Ball</button>
+      <button data-action="showBlockEditor" class="btn btn-primary">Add Block</button>
     </div>
     <h3>Arena</h3>
     <button data-action="arena-editor">Arena Settings</button>
@@ -43,7 +43,7 @@
     <button data-action="back-to-menu" class="btn-secondary">Menu</button>
   </div>
 
-  <div id="sim-controls" class="panel hidden">
+  <div id="simControls" class="panel hidden">
     <button data-action="play" class="btn-play">PLAY</button>
     <button data-action="pause" class="btn-pause">PAUSE</button>
     <button data-action="stop" class="btn-stop">STOP</button>
@@ -60,202 +60,181 @@
     </div>
   </div>
 
-  <div id="battle-log" class="panel hidden">
+  <div id="battleLog" class="panel hidden">
     <h3>Battle Log</h3>
-    <div id="log-entries"></div>
+    <div id="logEntries"></div>
+    <button data-action="clearLog" class="btn btn-sm btn-secondary">Clear</button>
   </div>
 
-  <div id="ball-editor" class="modal hidden">
+  <div id="ballEditor" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Edit Ball</h3>
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Name: <input type="text" id="ball-name" data-prop="name"></label>
-        <label>HP: <input type="number" id="ball-hp" data-prop="hp" min="1" value="100"></label>
-        <label>Damage: <input type="number" id="ball-damage" data-prop="damage" min="0" value="10"></label>
-        <label>Speed: <input type="number" id="ball-speed" data-prop="speed" min="0" value="5"></label>
-        <label>Size: <input type="number" id="ball-size" data-prop="size" min="10" max="200" value="30"></label>
-        <label>Mass: <input type="number" id="ball-mass" data-prop="mass" min="1" value="10"></label>
+        <label>Name: <input type="text" id="ballName" data-prop="name"></label>
+        <label>HP: <input type="number" id="ballHp" data-prop="hp" min="1" value="100"></label>
+        <label>Damage: <input type="number" id="ballDamage" data-prop="damage" min="0" value="10"></label>
+        <label>Speed: <input type="number" id="ballSpeed" data-prop="speed" min="0" value="5"></label>
+        <label>Size: <input type="number" id="ballSize" data-prop="size" min="10" max="200" value="30"></label>
+        <label>Mass: <input type="number" id="ballMass" data-prop="mass" min="1" value="10"></label>
         <label>AI Type:
-          <select id="ball-ai" data-prop="ai">
+          <select id="ballAi" data-prop="ai">
             <option value="aggressive">Aggressive</option>
             <option value="defensive">Defensive</option>
+            <option value="random">Random</option>
+            <option value="ranged">Ranged</option>
+            <option value="melee">Melee</option>
+            <option value="coward">Coward</option>
+            <option value="guard">Guard</option>
+            <option value="berserker">Berserker</option>
             <option value="passive">Passive</option>
-            <option value="smart">Smart</option>
           </select>
         </label>
         <label>Team:
-          <select id="ball-team" data-prop="team">
-            <option value="red">Red</option>
-            <option value="blue">Blue</option>
-            <option value="green">Green</option>
-            <option value="yellow">Yellow</option>
-            <option value="none">None</option>
+          <select id="ballTeam" data-prop="team">
+            <option value="Red">Red</option>
+            <option value="Blue">Blue</option>
+            <option value="Green">Green</option>
+            <option value="Yellow">Yellow</option>
+            <option value="Neutral">Neutral</option>
           </select>
         </label>
         <label>Weapon:
-          <select id="ball-weapon" data-prop="weapon">
-            <option value="none">None</option>
-            <option value="projectile">Projectile</option>
-            <option value="melee">Melee</option>
-            <option value="explosion">Explosion</option>
+          <select id="ballWeapon" data-prop="weaponType">
+            <option value="Sword">Sword</option>
+            <option value="Hammer">Hammer</option>
+            <option value="Axe">Axe</option>
+            <option value="Spear">Spear</option>
+            <option value="Laser">Laser</option>
+            <option value="Cannon">Cannon</option>
+            <option value="Bow">Bow</option>
+            <option value="Dagger">Dagger</option>
+            <option value="Shield">Shield</option>
+            <option value="None">None</option>
           </select>
         </label>
       </div>
       <div class="modal-footer">
-        <button data-action="apply-ball" class="btn-play">Apply</button>
-        <button data-action="delete-ball" class="btn-stop">Delete</button>
+        <button data-action="apply-ball" class="btn-play">Add Ball</button>
+        <button data-action="close" class="btn-secondary">Close</button>
       </div>
     </div>
   </div>
 
-  <div id="block-editor" class="modal hidden">
+  <div id="blockEditor" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Edit Block</h3>
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Name: <input type="text" id="block-name" data-prop="name"></label>
-        <label>HP: <input type="number" id="block-hp" data-prop="hp" min="1" value="200"></label>
-        <label>Width: <input type="number" id="block-width" data-prop="width" min="10" value="100"></label>
-        <label>Height: <input type="number" id="block-height" data-prop="height" min="10" value="50"></label>
+        <label>Name: <input type="text" id="blockName" data-prop="name"></label>
+        <label>HP: <input type="number" id="blockHp" data-prop="hp" min="1" value="200"></label>
+        <label>Width: <input type="number" id="blockWidth" data-prop="width" min="10" value="100"></label>
+        <label>Height: <input type="number" id="blockHeight" data-prop="height" min="10" value="50"></label>
         <label>Material:
-          <select id="block-material" data-prop="material">
-            <option value="wood">Wood</option>
-            <option value="stone">Stone</option>
-            <option value="metal">Metal</option>
-            <option value="glass">Glass</option>
-            <option value="ice">Ice</option>
+          <select id="blockMaterial" data-prop="material">
+            <option value="Brick">Brick</option>
+            <option value="Stone">Stone</option>
+            <option value="Metal">Metal</option>
+            <option value="Glass">Glass</option>
+            <option value="Rubber">Rubber</option>
+            <option value="Ice">Ice</option>
+            <option value="Explosive">Explosive</option>
+            <option value="Indestructible">Indestructible</option>
           </select>
         </label>
-        <label><input type="checkbox" id="block-breakable" data-prop="breakable"> Breakable</label>
+        <label><input type="checkbox" id="blockBreakable" data-prop="breakable" checked> Breakable</label>
       </div>
       <div class="modal-footer">
-        <button data-action="apply-block" class="btn-play">Apply</button>
-        <button data-action="delete-block" class="btn-stop">Delete</button>
+        <button data-action="apply-block" class="btn-play">Add Block</button>
+        <button data-action="close" class="btn-secondary">Close</button>
       </div>
     </div>
   </div>
 
-  <div id="arena-editor" class="modal hidden">
+  <div id="arenaEditor" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Arena Settings</h3>
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Width: <input type="number" id="arena-width" data-prop="width" min="200" max="5000" value="1200"></label>
-        <label>Height: <input type="number" id="arena-height" data-prop="height" min="200" max="5000" value="800"></label>
+        <label>Width: <input type="number" id="arenaWidth" data-prop="width" min="200" max="5000" value="1200"></label>
+        <label>Height: <input type="number" id="arenaHeight" data-prop="height" min="200" max="5000" value="800"></label>
+        <label>Boundary Type:
+          <select id="boundaryType" data-prop="boundaryType">
+            <option value="SolidWalls">Solid Walls</option>
+            <option value="DeathWall">Death Wall</option>
+            <option value="Wraparound">Wraparound</option>
+            <option value="Portals">Portals</option>
+          </select>
+        </label>
         <h4>Presets</h4>
-        <div class="preset-list">
-          <button data-preset="small" class="preset-btn">Small (800x600)</button>
-          <button data-preset="medium" class="preset-btn">Medium (1200x800)</button>
-          <button data-preset="large" class="preset-btn">Large (1920x1080)</button>
-          <button data-preset="arena" class="preset-btn">Arena (1600x900)</button>
-          <button data-preset="pit" class="preset-btn">Pit (800x1200)</button>
-        </div>
+        <div id="arenaPresetList" class="preset-list"></div>
       </div>
       <div class="modal-footer">
         <button data-action="apply-arena" class="btn-play">Apply</button>
+        <button data-action="close" class="btn-secondary">Close</button>
       </div>
     </div>
   </div>
 
-  <div id="settings-panel" class="modal hidden">
+  <div id="settingsPanel" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Settings</h3>
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Gravity: <input type="number" id="setting-gravity" data-prop="gravity" min="0" max="5" step="0.1" value="1"></label>
-        <label>Time Scale: <input type="number" id="setting-timescale" data-prop="timescale" min="0.1" max="5" step="0.1" value="1"></label>
-        <label>Damage Multiplier: <input type="number" id="setting-damage" data-prop="damageMultiplier" min="0" max="10" step="0.5" value="1"></label>
+        <label>Gravity: <input type="range" id="gravitySlider" min="0" max="3" step="0.1" value="1"> <span id="gravityValue">1.0</span></label>
+        <label>Time Scale: <input type="number" id="settingTimescale" data-prop="timescale" min="0.1" max="8" step="0.1" value="1"></label>
+        <label>Damage Multiplier: <input type="number" id="settingDamage" data-prop="damageMultiplier" min="0" max="10" step="0.5" value="1"></label>
         <h4>Physics Presets</h4>
         <div class="preset-list">
-          <button data-physics-preset="normal" class="preset-btn">Normal</button>
-          <button data-physics-preset="space" class="preset-btn">Space (Low Gravity)</button>
-          <button data-physics-preset="heavy" class="preset-btn">Heavy Gravity</button>
-          <button data-physics-preset="fast" class="preset-btn">Fast Time</button>
-          <button data-physics-preset="slow" class="preset-btn">Slow Motion</button>
-          <button data-physics-preset="chaos" class="preset-btn">Chaos Mode</button>
+          <button data-preset="normal" class="preset-btn">Normal</button>
+          <button data-preset="zeroGravity" class="preset-btn">Zero Gravity</button>
+          <button data-preset="lowGravity" class="preset-btn">Low Gravity</button>
+          <button data-preset="highGravity" class="preset-btn">High Gravity</button>
+          <button data-preset="superBounce" class="preset-btn">Super Bounce</button>
+          <button data-preset="lowFriction" class="preset-btn">Low Friction</button>
+          <button data-preset="highKnockback" class="preset-btn">High Knockback</button>
+          <button data-preset="doubleDamage" class="preset-btn">Double Damage</button>
         </div>
       </div>
       <div class="modal-footer">
         <button data-action="apply-settings" class="btn-play">Apply</button>
+        <button data-action="close" class="btn-secondary">Close</button>
       </div>
     </div>
   </div>
 
-  <div id="results-panel" class="modal hidden">
+  <div id="resultsPanel" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Simulation Results</h3>
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <div id="winner-display">No winner yet</div>
-        <div id="results-stats"></div>
+        <div id="winnerDisplay">No winner yet</div>
+        <div id="resultsStats"></div>
       </div>
       <div class="modal-footer">
         <button data-action="close-results" class="btn-secondary">Close</button>
-        <button data-action="save-results" class="btn-play">Save</button>
       </div>
     </div>
   </div>
 
-  <div id="examples-panel" class="modal hidden">
+  <div id="examplesPanel" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Example Simulations</h3>
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="examples-list">
-          <button data-example="1" class="example-btn">
-            <span class="example-title">Classic Duel</span>
-            <span class="example-desc">2 aggressive balls fight to the death</span>
-          </button>
-          <button data-example="2" class="example-btn">
-            <span class="example-title">Team Battle</span>
-            <span class="example-desc">4v4 red vs blue with weapons</span>
-          </button>
-          <button data-example="3" class="example-btn">
-            <span class="example-title">Gauntlet</span>
-            <span class="example-desc">1 ball vs many obstacles</span>
-          </button>
-          <button data-example="4" class="example-btn">
-            <span class="example-title">Pinball Chaos</span>
-            <span class="example-desc">20 balls in a bumpers arena</span>
-          </button>
-          <button data-example="5" class="example-btn">
-            <span class="example-title">Fortress Siege</span>
-            <span class="example-desc">Break through blocks to reach the goal</span>
-          </button>
-          <button data-example="6" class="example-btn">
-            <span class="example-title">Free For All</span>
-            <span class="example-desc">8 balls, every team for itself</span>
-          </button>
-          <button data-example="7" class="example-btn">
-            <span class="example-title">Bowling</span>
-            <span class="example-desc">Knock down block formations</span>
-          </button>
-          <button data-example="8" class="example-btn">
-            <span class="example-title">Defender</span>
-            <span class="example-desc">Protect the wall from waves</span>
-          </button>
-          <button data-example="9" class="example-btn">
-            <span class="example-title">Gravity Wells</span>
-            <span class="example-desc">Balls orbiting around heavy objects</span>
-          </button>
-          <button data-example="10" class="example-btn">
-            <span class="example-title">Speed Run</span>
-            <span class="example-desc">Fast balls racing through obstacles</span>
-          </button>
-        </div>
+        <div id="examplesList" class="examples-list"></div>
       </div>
       <div class="modal-footer">
         <button data-action="close-examples" class="btn-secondary">Close</button>
@@ -264,9 +243,10 @@
   </div>
 
   <div id="hud" class="panel hidden">
-    <span id="hud-mode">Mode: Build</span>
-    <span id="hud-state">State: Idle</span>
-    <span id="hud-camera">Camera: Follow</span>
+    <span id="hudState">State: Idle</span>
+    <span id="hudZoom">Zoom: 1.00x</span>
+    <span id="hudTimeScale">Speed: 1x</span>
+    <span id="hudTime">Time: 0.0s</span>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
