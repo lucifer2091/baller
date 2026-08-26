@@ -328,10 +328,10 @@ window.PhysicsEngine = class PhysicsEngine {
     options = options || {};
     var id = this._bodyIdCounter++;
     var body = Matter.Bodies.circle(x, y, radius || 25, {
-      restitution: options.bounce !== undefined ? options.bounce : 0.92,
+      restitution: options.bounce !== undefined ? options.bounce : 0.95,
       friction: options.friction !== undefined ? options.friction : 0,
       density: (options.mass || 5) / 1000,
-      frictionAir: options.frictionAir !== undefined ? options.frictionAir : 0.001,
+      frictionAir: options.frictionAir !== undefined ? options.frictionAir : 0,
       label: "ball_" + id
     });
     body.gameData = {

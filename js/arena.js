@@ -13,10 +13,7 @@ window.ArenaBuilder = class ArenaBuilder {
     this.floorColor = "#2a2a3a";
     this.wallColor = "#555570";
     this.name = "Default Arena";
-    this.portals = [
-      { x: 50, y: 300, radius: 25, color: "#00ff88" },
-      { x: 750, y: 300, radius: 25, color: "#00aaff" }
-    ];
+    this.portals = [];
     this.portalCooldowns = new Map();
     this.portalCooldownMs = 500;
     // wizard flow extensions
@@ -577,10 +574,7 @@ window.ArenaBuilder = class ArenaBuilder {
     this.orbs = [];
     this.scatteredOrbTimer = 0;
     this.scatteredOrbConfig = null;
-    this.portals = [
-      { x: 50, y: 300, radius: 25, color: "#00ff88" },
-      { x: 750, y: 300, radius: 25, color: "#00aaff" }
-    ];
+    this.portals = [];
     this.portalCooldowns.clear();
     this.width = 800;
     this.height = 600;

@@ -433,9 +433,9 @@ window.PRESETS = {
   ARENA_PRESETS: {
     "Classic Box": {
       name: "Classic Box",
-      width: 1200,
-      height: 800,
-      description: "Simple enclosed arena with brick walls",
+      width: 200,
+      height: 200,
+      description: "Small 7x7 ball-size arena",
       gravity: 1,
       generateBlocks: function (w, h) {
         var blocks = [];

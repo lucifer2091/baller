@@ -40,8 +40,8 @@ window.Game = class Game {
 
     this.setupInput();
     this.ui.init();
-    this.arena.buildArena(800, 600);
-    this.camera.goTo(400, 300, 0.9);
+    this.arena.buildArena(200, 200);
+    this.camera.goTo(100, 100, 0.9);
     this.ui.showMainMenu();
 
     window.ballManager = this.ballManager;
@@ -457,7 +457,7 @@ window.Game = class Game {
     this.matchModifiers = modifiers;
 
     // Arena
-    var arenaW = 1200, arenaH = 800;
+    var arenaW = 200, arenaH = 200;
     if (mapData.isCustom) {
       // Custom arena already has objects; just ensure size
       arenaW = this.arena.width;
