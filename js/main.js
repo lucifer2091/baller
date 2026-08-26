@@ -251,6 +251,10 @@ window.Game = class Game {
       if (!ball.data.alive) continue;
       var teamInfo = teams[ball.data.team];
       var teamColor = (teamInfo && teamInfo.color) ? teamInfo.color : ball.data.color;
+      var weaponDmg = 0;
+      if (ball._weapons && ball._weapons.length > 0) {
+        weaponDmg = Math.round(ball._weapons[0].data.damage * 10) / 10;
+      }
       ballsArr.push({
         body: ball.body,
         data: {
@@ -261,7 +265,8 @@ window.Game = class Game {
           color: teamColor,
           teamColor: teamColor,
           radius: ball.data.size,
-          damageBonus: ball.data.damageBonus || 0
+          damageBonus: ball.data.damageBonus || 0,
+          weaponDamage: weaponDmg
         }
       });
     }

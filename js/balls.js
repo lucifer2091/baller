@@ -192,6 +192,7 @@ window.BallManager = class BallManager {
     ball.data.hp -= finalAmount;
     if (source && source.data) {
       source.data.damageDealt = (source.data.damageDealt || 0) + finalAmount;
+      this.applyWeaponScaling(source);
     }
 
     if (source && source.data && source.data.hasLifesteal) {
@@ -233,6 +234,59 @@ window.BallManager = class BallManager {
   applyRotateOrb(ball, mult, duration) {
     ball.data.orbRotMult = mult;
     ball.data.orbRotTimer = duration;
+  }
+
+  applyWeaponScaling(ball) {
+    if (!ball || !ball._weapons) return;
+    for (var i = 0; i < ball._weapons.length; i++) {
+      var weapon = ball._weapons[i];
+      var type = weapon.type;
+      switch (type) {
+        case "Sword":
+          weapon.data.damage += 1;
+          break;
+        case "Dagger":
+          weapon.data.orbitSpeed = (weapon.data.orbitSpeed || 0.08) + 0.0375;
+          break;
+        case "Spear":
+          weapon.data.damage += 0.5;
+          weapon.data.orbitRadius += 0.5;
+          break;
+        case "Axe":
+          weapon.data.damage += 0.5;
+          weapon.data.orbitRadius += 0.5;
+          break;
+        case "Bow":
+          weapon.data.arrowCount = (weapon.data.arrowCount || 1) + 1;
+          break;
+        case "Hammer":
+          weapon.data.damage += 1;
+          weapon.data.orbitSpeed = (weapon.data.orbitSpeed || 0.048) + 0.01;
+          break;
+        case "Cannon":
+          weapon.data.damage += 0.5;
+          break;
+        case "Laser":
+          weapon.data.damage += 0.5;
+          break;
+        case "Shield":
+          weapon.data.orbitRadius += 0.3;
+          break;
+        case "Flail":
+          weapon.data.damage += 0.5;
+          break;
+        case "Crossbow":
+          weapon.data.damage += 2;
+          break;
+        case "Boomerang":
+          weapon.data.damage += 2;
+          break;
+        case "Flask":
+          weapon.data.damage += 0.5;
+          break;
+      }
+      weapon.data.totalHits = (weapon.data.totalHits || 0) + 1;
+    }
   }
 
   killBall(ball, killer = null) {
@@ -423,9 +477,11 @@ window.BallManager = class BallManager {
         ...weaponData,
         angle: 0,
         orbitRadius: weaponData.range || 30,
+        orbitSpeed: 0.08,
         cooldown: (1 / (weaponData.attackSpeed || 1)) * 1000,
         lastAttackTime: 0,
-        projectiles: []
+        projectiles: [],
+        totalHits: 0
       }
     };
 
@@ -444,7 +500,7 @@ window.BallManager = class BallManager {
         var wPreset = (window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[weapon.type]) || null;
         var wBehavior = (wPreset && wPreset.behavior) || weapon.data.behavior || "sweep";
         if (wBehavior === 'shoot') {
-          weapon.data.angle += 0.08 * (ball.data.rotSpeedMult || 1) * (ball.data.orbRotMult || 1);
+          weapon.data.angle += (weapon.data.orbitSpeed || 0.08) * (ball.data.rotSpeedMult || 1) * (ball.data.orbRotMult || 1);
 
           if (Date.now() - weapon.data.lastAttackTime > weapon.data.cooldown) {
             const enemies = this.getEnemyBalls(ball);
@@ -493,7 +549,7 @@ window.BallManager = class BallManager {
             }
           }
         } else {
-          weapon.data.angle += 0.08 * (ball.data.rotSpeedMult || 1) * (ball.data.orbRotMult || 1);
+          weapon.data.angle += (weapon.data.orbitSpeed || 0.08) * (ball.data.rotSpeedMult || 1) * (ball.data.orbRotMult || 1);
 
           const ox = ball.body.position.x + Math.cos(weapon.data.angle) * weapon.data.orbitRadius;
           const oy = ball.body.position.y + Math.sin(weapon.data.angle) * weapon.data.orbitRadius;
@@ -536,8 +592,36 @@ window.BallManager = class BallManager {
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < enemy.data.size + 15) {
             if (Date.now() - weapon.data.lastAttackTime > weapon.data.cooldown) {
-              this.damageBall(enemy, weapon.data.damage, ball);
+              var hitDmg = weapon.data.damage + (ball.data.damageBonus || 0);
+              this.damageBall(enemy, hitDmg, ball);
+              ball.data.damageBonus = (ball.data.damageBonus || 0) + 2;
               weapon.data.lastAttackTime = Date.now();
+            }
+          }
+
+          if (!enemy._weapons) continue;
+          for (const eWeapon of enemy._weapons) {
+            var ewPreset = (window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[eWeapon.type]) || null;
+            var ewBehavior = (ewPreset && ewPreset.behavior) || eWeapon.data.behavior || "sweep";
+            if (ewBehavior === 'shoot') continue;
+            const eox = enemy.body.position.x + Math.cos(eWeapon.data.angle) * eWeapon.data.orbitRadius;
+            const eoy = enemy.body.position.y + Math.sin(eWeapon.data.angle) * eWeapon.data.orbitRadius;
+            const wdx = ox - eox;
+            const wdy = oy - eoy;
+            const wDist = Math.sqrt(wdx * wdx + wdy * wdy);
+            if (wDist < 20) {
+              if (weapon.type === "Hammer" || eWeapon.type === "Hammer") {
+                const hammerBall = weapon.type === "Hammer" ? ball : enemy;
+                const otherBall = weapon.type === "Hammer" ? enemy : ball;
+                this.damageBall(otherBall, 3, hammerBall);
+              } else {
+                const nx = wdx / (wDist || 1);
+                const ny = wdy / (wDist || 1);
+                if (ball.body) Matter.Body.applyForce(ball.body, ball.body.position, { x: nx * 0.008, y: ny * 0.008 });
+                if (enemy.body) Matter.Body.applyForce(enemy.body, enemy.body.position, { x: -nx * 0.008, y: -ny * 0.008 });
+                weapon.data.lastAttackTime = Date.now() + 200;
+                eWeapon.data.lastAttackTime = Date.now() + 200;
+              }
             }
           }
         }
