@@ -9,6 +9,7 @@
 <body>
   <canvas id="gameCanvas"></canvas>
 
+  <!-- ===================== MAIN MENU ===================== -->
   <div id="mainMenu">
     <h1 class="menu-title">BALL BATTLE<br>SIMULATOR</h1>
     <div class="menu-buttons">
@@ -19,6 +20,242 @@
     </div>
   </div>
 
+  <!-- ===================== WIZARD: STEP 1 - FIGHTERS ===================== -->
+  <div id="wizardFighters" class="wizard-panel hidden">
+    <div class="wizard-header">
+      <h2>Step 1 — Fighters</h2>
+      <span class="wizard-step-label">1 / 3</span>
+    </div>
+    <p class="wizard-desc">Add at least 2 fighters. Pick a preset then tweak stats. Weapons modify your fighter.</p>
+
+    <div id="fighterList" class="fighter-list"></div>
+
+    <button id="addFighterBtn" class="btn btn-primary">+ Add Fighter</button>
+    <p id="fighterCountWarning" class="warning hidden">Need at least 2 fighters to continue.</p>
+
+    <div class="wizard-nav">
+      <button data-action="wizard-back-menu" class="btn btn-secondary">Back</button>
+      <button id="fightersNextBtn" data-action="wizard-fighters-next" class="btn btn-play" disabled>Next: Map →</button>
+    </div>
+  </div>
+
+  <!-- Fighter Editor Modal (used inside wizard) -->
+  <div id="fighterEditor" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="fighterEditorTitle">Add Fighter</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Preset:
+          <select id="fighterPreset">
+            <option value="Basic">Basic — Balanced</option>
+            <option value="Sword">Sword — Fast Melee</option>
+            <option value="Hammer">Hammer — Heavy Hitter</option>
+            <option value="Laser">Laser — Ranged</option>
+            <option value="Bomber">Bomber — Explosive</option>
+            <option value="Speed">Speed — Hit & Run</option>
+            <option value="Tank">Tank — Fortress</option>
+            <option value="Berserker">Berserker — Rage</option>
+            <option value="Shield">Shield — Defensive</option>
+            <option value="Swarm">Swarm — Tiny</option>
+          </select>
+        </label>
+        <label>Name: <input type="text" id="fighterName" value="Fighter"></label>
+        <label>Health: <input type="range" id="fighterHp" min="100" max="2000" step="50" value="500"> <span id="fighterHpVal">500</span></label>
+        <label>Base Damage: <input type="range" id="fighterDamage" min="5" max="150" step="5" value="25"> <span id="fighterDamageVal">25</span></label>
+        <label>Base Speed: <input type="range" id="fighterSpeed" min="1" max="10" step="0.5" value="3"> <span id="fighterSpeedVal">3</span></label>
+        <label>Size: <input type="range" id="fighterSize" min="10" max="50" step="2" value="25"> <span id="fighterSizeVal">25</span></label>
+        <label>Mass: <input type="range" id="fighterMass" min="1" max="15" step="1" value="5"> <span id="fighterMassVal">5</span></label>
+        <label>Weapon:
+          <select id="fighterWeapon">
+            <option value="None">None</option>
+            <option value="Sword">Sword — Balanced (+10 dmg)</option>
+            <option value="Hammer">Hammer — Heavy (+30 dmg, -1 speed)</option>
+            <option value="Axe">Axe — Spinning (+20 dmg)</option>
+            <option value="Spear">Spear — Long Reach (+10 dmg)</option>
+            <option value="Laser">Laser — Ranged Shot</option>
+            <option value="Cannon">Cannon — Explosive</option>
+            <option value="Bow">Bow — Arrows</option>
+            <option value="Dagger">Dagger — Very Fast</option>
+            <option value="Shield">Shield — Orbit Defense</option>
+          </select>
+        </label>
+        <div id="weaponStatPreview" class="stat-preview"></div>
+        <label>AI:
+          <select id="fighterAi">
+            <option value="Aggressive">Aggressive</option>
+            <option value="Defensive">Defensive</option>
+            <option value="Random">Random</option>
+            <option value="Ranged">Ranged</option>
+            <option value="Melee">Melee</option>
+            <option value="Coward">Coward</option>
+            <option value="Guard">Guard</option>
+            <option value="Berserker">Berserker</option>
+            <option value="Passive">Passive</option>
+          </select>
+        </label>
+        <label>Team:
+          <select id="fighterTeam">
+            <option value="Red">Red</option>
+            <option value="Blue">Blue</option>
+            <option value="Green">Green</option>
+            <option value="Yellow">Yellow</option>
+            <option value="Neutral">Neutral</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="fighterSaveBtn" class="btn btn-play">Save Fighter</button>
+        <button data-action="close" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== WIZARD: STEP 2 - MAP ===================== -->
+  <div id="wizardMap" class="wizard-panel hidden">
+    <div class="wizard-header">
+      <h2>Step 2 — Map</h2>
+      <span class="wizard-step-label">2 / 3</span>
+    </div>
+    <p class="wizard-desc">Choose a preset arena or build your own.</p>
+
+    <div class="preset-grid" id="mapPresetGrid"></div>
+
+    <button id="customMapBtn" class="btn btn-secondary" style="width:100%;margin-top:12px;">+ Build Custom Map</button>
+
+    <div class="wizard-nav">
+      <button data-action="wizard-map-back" class="btn btn-secondary">← Back</button>
+      <button id="mapNextBtn" data-action="wizard-map-next" class="btn btn-play" disabled>Next: Modifiers →</button>
+    </div>
+  </div>
+
+  <!-- ===================== WIZARD: CUSTOM MAP BUILDER ===================== -->
+  <div id="customMapBuilder" class="wizard-panel hidden" style="max-width:520px;">
+    <div class="wizard-header">
+      <h2>Custom Map</h2>
+      <span class="wizard-step-label">Custom</span>
+    </div>
+    <p class="wizard-desc">Place walls, portals, and pads. Canvas is interactive — click to place.</p>
+
+    <div class="tool-group">
+      <button data-build-tool="wall" class="tool-btn active">Wall</button>
+      <button data-build-tool="portal" class="tool-btn">Portal</button>
+      <button data-build-tool="healPad" class="tool-btn">Heal Pad</button>
+      <button data-build-tool="rotatePad" class="tool-btn">Rotate Pad</button>
+      <button data-build-tool="delete" class="tool-btn">Delete</button>
+    </div>
+
+    <div id="buildToolOptions" class="build-options"></div>
+
+    <div class="build-stats">
+      <span>Walls: <b id="buildWallCount">0</b></span>
+      <span>Portals: <b id="buildPortalCount">0</b></span>
+      <span>Heal Pads: <b id="buildHealCount">0</b></span>
+      <span>Rotate Pads: <b id="buildRotateCount">0</b></span>
+    </div>
+    <button id="buildClearBtn" class="btn btn-sm btn-secondary">Clear All</button>
+
+    <div class="wizard-nav">
+      <button data-action="wizard-custom-back" class="btn btn-secondary">← Back to Presets</button>
+      <button data-action="wizard-custom-next" class="btn btn-play">Done → Modifiers</button>
+    </div>
+  </div>
+
+  <!-- Build Tool Config Modal -->
+  <div id="buildConfigModal" class="modal hidden">
+    <div class="modal-content" style="min-width:320px;">
+      <div class="modal-header">
+        <h3 id="buildConfigTitle">Configure</h3>
+        <button data-action="close" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="buildConfigBody"></div>
+      <div class="modal-footer">
+        <button id="buildConfigSave" class="btn btn-play">Place</button>
+        <button data-action="close" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== WIZARD: STEP 3 - MODIFIERS ===================== -->
+  <div id="wizardModifiers" class="wizard-panel hidden">
+    <div class="wizard-header">
+      <h2>Step 3 — Match Modifiers</h2>
+      <span class="wizard-step-label">3 / 3</span>
+    </div>
+
+    <h4>Base Match Modifiers</h4>
+    <label class="check-label"><input type="checkbox" id="modWallBoost"> Wall hit: +2% speed (cap 3×)</label>
+
+    <label>Gravity: <input type="range" id="modGravity" min="0" max="3" step="0.1" value="1"> <span id="modGravityVal">1.0</span></label>
+
+    <label class="check-label"><input type="checkbox" id="modScatteredOrbs"> Scattered Orbs — every 30s a batch spawns randomly</label>
+    <div id="scatteredOrbOptions" class="indent hidden">
+      <label>Orb Type:
+        <select id="modOrbType">
+          <option value="heal">Healing Orbs</option>
+          <option value="rotate">Rotation Orbs</option>
+          <option value="mixed">Mixed</option>
+        </select>
+      </label>
+      <label>Heal Amount (if heal): <input type="number" id="modOrbHeal" min="10" max="500" value="80"></label>
+      <label>Rotation Multiplier (if rotate): <input type="number" id="modOrbRotMult" min="1.1" max="3" step="0.1" value="1.5"></label>
+      <label>Rotation Duration (s): <input type="number" id="modOrbRotDur" min="2" max="30" value="8"></label>
+    </div>
+
+    <h4>Ball Modifiers (apply to all fighters)</h4>
+    <label class="check-label"><input type="checkbox" id="mod2xDamage"> 2× Damage</label>
+    <label class="check-label"><input type="checkbox" id="modLifesteal"> 20% Lifesteal (heal 20% of damage dealt)</label>
+    <label class="check-label"><input type="checkbox" id="mod2xSpeed"> 2× Speed</label>
+    <label class="check-label"><input type="checkbox" id="modRotSpeed"> 1.5× Rotation Speed</label>
+    <label class="check-label"><input type="checkbox" id="modRandomSize"> Randomized Size at start (0.7×–1.5×)</label>
+
+    <div class="wizard-nav">
+      <button data-action="wizard-mod-back" class="btn btn-secondary">← Back</button>
+      <button id="finishBtn" data-action="wizard-finish" class="btn btn-play">FINISH — START MATCH</button>
+    </div>
+  </div>
+
+  <!-- ===================== COUNTDOWN OVERLAY ===================== -->
+  <div id="countdownOverlay" class="countdown-overlay hidden">
+    <div id="countdownNumber" class="countdown-number">3</div>
+    <div id="countdownLabel" class="countdown-label">Get Ready</div>
+  </div>
+
+  <!-- ===================== SIM CONTROLS (during battle) ===================== -->
+  <div id="simControls" class="panel hidden">
+    <button data-action="play" class="btn btn-play">PLAY</button>
+    <button data-action="pause" class="btn btn-pause">PAUSE</button>
+    <button data-action="stop" class="btn btn-stop">STOP</button>
+    <button data-action="reset" class="btn btn-reset">RESET</button>
+    <button data-action="step" class="btn btn-step">STEP</button>
+    <div class="speed-control">
+      <label>Speed:</label>
+      <select id="speed-select">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+        <option value="8">8x</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ===================== BATTLE LOG ===================== -->
+  <div id="battleLog" class="panel hidden">
+    <h3>Battle Log</h3>
+    <div id="logEntries"></div>
+    <button data-action="clearLog" class="btn btn-sm btn-secondary">Clear</button>
+  </div>
+
+  <!-- ===================== HUD (during battle) ===================== -->
+  <div id="hud" class="panel hidden">
+    <span id="hudState">State: Idle</span>
+    <span id="hudZoom">Zoom: 1.00x</span>
+    <span id="hudTimeScale">Speed: 1x</span>
+    <span id="hudTime">Time: 0.0s</span>
+  </div>
+
+  <!-- ===================== LEGACY: Build Toolbar (kept for sandbox) ===================== -->
   <div id="buildToolbar" class="panel hidden">
     <h3>Tools</h3>
     <div class="tool-group">
@@ -40,32 +277,10 @@
     <h3>Arena</h3>
     <button data-action="arena-editor">Arena Settings</button>
     <div class="toolbar-spacer"></div>
-    <button data-action="back-to-menu" class="btn-secondary">Menu</button>
+    <button data-action="back-to-menu" class="btn btn-secondary">Menu</button>
   </div>
 
-  <div id="simControls" class="panel hidden">
-    <button data-action="play" class="btn-play">PLAY</button>
-    <button data-action="pause" class="btn-pause">PAUSE</button>
-    <button data-action="stop" class="btn-stop">STOP</button>
-    <button data-action="reset" class="btn-reset">RESET</button>
-    <button data-action="step" class="btn-step">STEP</button>
-    <div class="speed-control">
-      <label>Speed:</label>
-      <select id="speed-select" data-action="speed">
-        <option value="1">1x</option>
-        <option value="2">2x</option>
-        <option value="4">4x</option>
-        <option value="8">8x</option>
-      </select>
-    </div>
-  </div>
-
-  <div id="battleLog" class="panel hidden">
-    <h3>Battle Log</h3>
-    <div id="logEntries"></div>
-    <button data-action="clearLog" class="btn btn-sm btn-secondary">Clear</button>
-  </div>
-
+  <!-- ===================== MODALS ===================== -->
   <div id="ballEditor" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
@@ -73,14 +288,14 @@
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Name: <input type="text" id="ballName" data-prop="name"></label>
-        <label>HP: <input type="number" id="ballHp" data-prop="hp" min="1" value="100"></label>
-        <label>Damage: <input type="number" id="ballDamage" data-prop="damage" min="0" value="10"></label>
-        <label>Speed: <input type="number" id="ballSpeed" data-prop="speed" min="0" value="5"></label>
-        <label>Size: <input type="number" id="ballSize" data-prop="size" min="10" max="200" value="30"></label>
-        <label>Mass: <input type="number" id="ballMass" data-prop="mass" min="1" value="10"></label>
-        <label>AI Type:
-          <select id="ballAi" data-prop="ai">
+        <label>Name: <input type="text" id="ballName"></label>
+        <label>HP: <input type="number" id="ballHp" min="1" value="100"></label>
+        <label>Damage: <input type="number" id="ballDamage" min="0" value="10"></label>
+        <label>Speed: <input type="number" id="ballSpeed" min="0" value="5"></label>
+        <label>Size: <input type="number" id="ballSize" min="10" max="200" value="30"></label>
+        <label>Mass: <input type="number" id="ballMass" min="1" value="10"></label>
+        <label>AI:
+          <select id="ballAi">
             <option value="aggressive">Aggressive</option>
             <option value="defensive">Defensive</option>
             <option value="random">Random</option>
@@ -93,7 +308,7 @@
           </select>
         </label>
         <label>Team:
-          <select id="ballTeam" data-prop="team">
+          <select id="ballTeam">
             <option value="Red">Red</option>
             <option value="Blue">Blue</option>
             <option value="Green">Green</option>
@@ -102,7 +317,7 @@
           </select>
         </label>
         <label>Weapon:
-          <select id="ballWeapon" data-prop="weaponType">
+          <select id="ballWeapon">
             <option value="Sword">Sword</option>
             <option value="Hammer">Hammer</option>
             <option value="Axe">Axe</option>
@@ -117,8 +332,8 @@
         </label>
       </div>
       <div class="modal-footer">
-        <button data-action="apply-ball" class="btn-play">Add Ball</button>
-        <button data-action="close" class="btn-secondary">Close</button>
+        <button data-action="apply-ball" class="btn btn-play">Add Ball</button>
+        <button data-action="close" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>
@@ -130,12 +345,12 @@
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Name: <input type="text" id="blockName" data-prop="name"></label>
-        <label>HP: <input type="number" id="blockHp" data-prop="hp" min="1" value="200"></label>
-        <label>Width: <input type="number" id="blockWidth" data-prop="width" min="10" value="100"></label>
-        <label>Height: <input type="number" id="blockHeight" data-prop="height" min="10" value="50"></label>
+        <label>Name: <input type="text" id="blockName"></label>
+        <label>HP: <input type="number" id="blockHp" min="1" value="200"></label>
+        <label>Width: <input type="number" id="blockWidth" min="10" value="100"></label>
+        <label>Height: <input type="number" id="blockHeight" min="10" value="50"></label>
         <label>Material:
-          <select id="blockMaterial" data-prop="material">
+          <select id="blockMaterial">
             <option value="Brick">Brick</option>
             <option value="Stone">Stone</option>
             <option value="Metal">Metal</option>
@@ -146,11 +361,11 @@
             <option value="Indestructible">Indestructible</option>
           </select>
         </label>
-        <label><input type="checkbox" id="blockBreakable" data-prop="breakable" checked> Breakable</label>
+        <label><input type="checkbox" id="blockBreakable" checked> Breakable</label>
       </div>
       <div class="modal-footer">
-        <button data-action="apply-block" class="btn-play">Add Block</button>
-        <button data-action="close" class="btn-secondary">Close</button>
+        <button data-action="apply-block" class="btn btn-play">Add Block</button>
+        <button data-action="close" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>
@@ -162,10 +377,10 @@
         <button data-action="close" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Width: <input type="number" id="arenaWidth" data-prop="width" min="200" max="5000" value="1200"></label>
-        <label>Height: <input type="number" id="arenaHeight" data-prop="height" min="200" max="5000" value="800"></label>
+        <label>Width: <input type="number" id="arenaWidth" min="200" max="5000" value="1200"></label>
+        <label>Height: <input type="number" id="arenaHeight" min="200" max="5000" value="800"></label>
         <label>Boundary Type:
-          <select id="boundaryType" data-prop="boundaryType">
+          <select id="boundaryType">
             <option value="SolidWalls">Solid Walls</option>
             <option value="DeathWall">Death Wall</option>
             <option value="Wraparound">Wraparound</option>
@@ -176,8 +391,8 @@
         <div id="arenaPresetList" class="preset-list"></div>
       </div>
       <div class="modal-footer">
-        <button data-action="apply-arena" class="btn-play">Apply</button>
-        <button data-action="close" class="btn-secondary">Close</button>
+        <button data-action="apply-arena" class="btn btn-play">Apply</button>
+        <button data-action="close" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>
@@ -190,8 +405,8 @@
       </div>
       <div class="modal-body">
         <label>Gravity: <input type="range" id="gravitySlider" min="0" max="3" step="0.1" value="1"> <span id="gravityValue">1.0</span></label>
-        <label>Time Scale: <input type="number" id="settingTimescale" data-prop="timescale" min="0.1" max="8" step="0.1" value="1"></label>
-        <label>Damage Multiplier: <input type="number" id="settingDamage" data-prop="damageMultiplier" min="0" max="10" step="0.5" value="1"></label>
+        <label>Time Scale: <input type="number" id="settingTimescale" min="0.1" max="8" step="0.1" value="1"></label>
+        <label>Damage Multiplier: <input type="number" id="settingDamage" min="0" max="10" step="0.5" value="1"></label>
         <h4>Physics Presets</h4>
         <div class="preset-list">
           <button data-preset="normal" class="preset-btn">Normal</button>
@@ -205,8 +420,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button data-action="apply-settings" class="btn-play">Apply</button>
-        <button data-action="close" class="btn-secondary">Close</button>
+        <button data-action="apply-settings" class="btn btn-play">Apply</button>
+        <button data-action="close" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>
@@ -222,7 +437,7 @@
         <div id="resultsStats"></div>
       </div>
       <div class="modal-footer">
-        <button data-action="close-results" class="btn-secondary">Close</button>
+        <button data-action="close-results" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>
@@ -237,16 +452,9 @@
         <div id="examplesList" class="examples-list"></div>
       </div>
       <div class="modal-footer">
-        <button data-action="close-examples" class="btn-secondary">Close</button>
+        <button data-action="close-examples" class="btn btn-secondary">Close</button>
       </div>
     </div>
-  </div>
-
-  <div id="hud" class="panel hidden">
-    <span id="hudState">State: Idle</span>
-    <span id="hudZoom">Zoom: 1.00x</span>
-    <span id="hudTimeScale">Speed: 1x</span>
-    <span id="hudTime">Time: 0.0s</span>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>

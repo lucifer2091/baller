@@ -31,6 +31,28 @@ window.BallManager = class BallManager {
       damageDealt: 0
     };
 
+    // Apply weapon statMods
+    var weaponPreset = window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[config.weaponType];
+    if (weaponPreset && weaponPreset.statMods) {
+      if (weaponPreset.statMods.damage) data.damage += weaponPreset.statMods.damage;
+      if (weaponPreset.statMods.speed) data.speed += weaponPreset.statMods.speed;
+      if (weaponPreset.statMods.size) data.size += weaponPreset.statMods.size;
+      if (data.speed < 0.5) data.speed = 0.5;
+    }
+
+    // Store original base stats
+    data.baseSpeed = data.speed;
+    data.baseDamage = data.damage;
+    data.baseSize = data.size;
+
+    // Initialize modifier tracking
+    data.wallBoostStacks = 0;
+    data.hasLifesteal = false;
+    data.rotSpeedMult = 1;
+    data.lifestealHeal = 0;
+    data.orbRotTimer = 0;
+    data.orbRotMult = 1;
+
     const ball = {
       id: this.nextId++,
       body: this.physics.addBall(x, y, data.size, {
@@ -65,6 +87,44 @@ window.BallManager = class BallManager {
     }
 
     return ball;
+  }
+
+  applyMatchModifiers(modifiers) {
+    // modifiers has shape { base: {...}, ball: { damage2x, lifesteal, speed2x, rotSpeed15x, randomSize } }
+    for (var i=0; i<this.balls.length; i++) {
+      var b = this.balls[i];
+      if (!b.data.alive) continue;
+      if (modifiers.ball.damage2x) b.data.damage *= 2;
+      if (modifiers.ball.speed2x) { b.data.speed *= 2; b.data.baseSpeed *= 2; }
+      if (modifiers.ball.rotSpeed15x) b.data.rotSpeedMult = 1.5;
+      if (modifiers.ball.lifesteal) b.data.hasLifesteal = true;
+      if (modifiers.ball.randomSize) {
+        var factor = 0.7 + Math.random() * 0.8; // 0.7 to 1.5
+        var newSize = b.data.size * factor;
+        b.data.size = newSize;
+        // Update physics body radius - destroy and recreate or scale
+        // For now just update data.size and let physics handle via scaling
+        // Also update Matter body circle radius by recreating
+        if (b.body && b.body.circleRadius) {
+          var oldPos = { x: b.body.position.x, y: b.body.position.y };
+          var oldVel = { x: b.body.velocity.x, y: b.body.velocity.y };
+          // Remove old body and create new with new size - preserve gameData
+          var gd = b.body.gameData;
+          this.physics.removeBody(b.body);
+          var newBody = this.physics.addBall(oldPos.x, oldPos.y, newSize, {
+            hp: gd.hp, maxHp: gd.maxHp, damage: gd.damage, speed: gd.speed,
+            mass: gd.mass, team: gd.team, ai: gd.ai, color: gd.color,
+            weaponType: gd.weaponType, critChance: gd.critChance,
+            critMultiplier: gd.critMultiplier, knockback: gd.knockback,
+            name: gd.name
+          });
+          newBody.gameData = gd;
+          newBody.gameData.size = newSize;
+          Matter.Body.setVelocity(newBody, oldVel);
+          b.body = newBody;
+        }
+      }
+    }
   }
 
   removeBall(id) {
@@ -129,10 +189,44 @@ window.BallManager = class BallManager {
       source.data.damageDealt = (source.data.damageDealt || 0) + finalAmount;
     }
 
+    if (source && source.data && source.data.hasLifesteal) {
+      var healAmount = finalAmount * 0.2;
+      this.healBall(source, healAmount);
+      source.data.lifestealHeal = (source.data.lifestealHeal || 0) + healAmount;
+    }
+
+    // orbRotTimer handling: if source has active rotation orb, its weapon orbit is faster (handled in updateWeapons via rotSpeedMult/ orbRotMult)
+
     if (ball.data.hp <= 0) {
       ball.data.hp = 0;
       this.killBall(ball, source);
     }
+  }
+
+  updateOrbTimers(dt) {
+    for (var i=0; i<this.balls.length; i++) {
+      var b = this.balls[i];
+      if (b.data.orbRotTimer > 0) {
+        b.data.orbRotTimer -= dt;
+        if (b.data.orbRotTimer <= 0) {
+          b.data.orbRotTimer = 0;
+          b.data.orbRotMult = 1;
+        }
+      }
+    }
+  }
+
+  applyWallBoost(ball) {
+    if (!ball.data.alive) return;
+    var cap = ball.data.baseSpeed * 3;
+    if (ball.data.speed >= cap) return;
+    ball.data.speed = Math.min(cap, ball.data.speed * 1.02);
+    ball.data.wallBoostStacks = (ball.data.wallBoostStacks || 0) + 1;
+  }
+
+  applyRotateOrb(ball, mult, duration) {
+    ball.data.orbRotMult = mult;
+    ball.data.orbRotTimer = duration;
   }
 
   killBall(ball, killer = null) {
@@ -344,7 +438,7 @@ window.BallManager = class BallManager {
         var wPreset = (window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[weapon.type]) || null;
         var wBehavior = (wPreset && wPreset.behavior) || weapon.data.behavior || "sweep";
         if (wBehavior === 'shoot') {
-          weapon.data.angle += 0.02;
+          weapon.data.angle += 0.08 * (ball.data.rotSpeedMult || 1) * (ball.data.orbRotMult || 1);
 
           if (Date.now() - weapon.data.lastAttackTime > weapon.data.cooldown) {
             const enemies = this.getEnemyBalls(ball);
@@ -391,7 +485,7 @@ window.BallManager = class BallManager {
             }
           }
         } else {
-          weapon.data.angle += 0.08;
+          weapon.data.angle += 0.08 * (ball.data.rotSpeedMult || 1) * (ball.data.orbRotMult || 1);
 
           const ox = ball.body.position.x + Math.cos(weapon.data.angle) * weapon.data.orbitRadius;
           const oy = ball.body.position.y + Math.sin(weapon.data.angle) * weapon.data.orbitRadius;

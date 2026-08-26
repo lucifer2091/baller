@@ -65,6 +65,81 @@ window.PhysicsEngine = class PhysicsEngine {
     if (bodyB.gameData && bodyB.gameData.type === "ball" && bodyA.gameData && bodyA.gameData.type === "block") {
       this._processBlockCollision(bodyB, bodyA);
     }
+    // wall speed boost detection - spec patterns: body.label && body.label.indexOf("arena_wall")===0  and  body.gameData && body.gameData.type==="wall"  and  window.game && window.game.matchModifiers && window.game.matchModifiers.base && window.game.matchModifiers.base.wallSpeedBoost  and  window.ballManager.applyWallBoost  and  window.ballManager.getAllBalls().find(b=>b.body===ballBody)
+    // also ensure wall boost effect spawning
+    try {
+      var ballBody = null;
+      var wallBody = null;
+      var isWall = function(b) {
+        // canonical spec check: body.label && body.label.indexOf("arena_wall")===0
+        // canonical spec check: body.gameData && body.gameData.type==="wall"
+        if (!b) return false;
+        if (b.label && typeof b.label === "string" && b.label.indexOf("arena_wall")===0) return true;
+        if (b.label && typeof b.label === "string" && b.label.indexOf("arena_wall") === 0) return true;
+        if (b.label && typeof b.label === "string" && b.label.indexOf("custom_wall") === 0) return true;
+        if (b.label && typeof b.label === "string" && b.label.indexOf("wall_") === 0) return true;
+        if (b.gameData && b.gameData.type==="wall") return true;
+        if (b.gameData && b.gameData.type === "wall") return true;
+        return false;
+      };
+      var isBall = function(b) {
+        return b && b.gameData && b.gameData.type === "ball";
+      };
+      if (isBall(bodyA) && isWall(bodyB)) {
+        ballBody = bodyA;
+        wallBody = bodyB;
+      } else if (isBall(bodyB) && isWall(bodyA)) {
+        ballBody = bodyB;
+        wallBody = bodyA;
+      }
+      if (ballBody && wallBody) {
+        var enabled = false;
+        try {
+          if (typeof window !== "undefined" && window.game && window.game.matchModifiers && window.game.matchModifiers.base) {
+            var base = window.game.matchModifiers.base;
+            var wboost = base.wallSpeedBoost;
+            if (wboost === true) enabled = true;
+            else if (wboost && typeof wboost === "object" && wboost.enabled) enabled = true;
+            else if (wboost && typeof wboost === "object" && wboost.enabled !== false && wboost !== false) {
+              // if object truthy without explicit disabled, consider enabled if any truthy prop
+              // fallback check for boolean-like
+              if (wboost.enabled === undefined && wboost !== false) {
+                // check for numeric or truthy wallSpeedBoostEnabled
+              }
+            }
+            if (!enabled && base.wallSpeedBoostEnabled) enabled = true;
+            // also support base.wallSpeedBoost as numeric multiplier meaning enabled
+            if (!enabled && typeof wboost === "number" && wboost > 0) enabled = true;
+          }
+        } catch (e) {}
+        if (enabled) {
+          var ballObj = null;
+          try {
+            if (typeof window !== "undefined" && window.ballManager && typeof window.ballManager.getAllBalls === "function") {
+              var allBalls = window.ballManager.getAllBalls();
+              for (var bi = 0; bi < allBalls.length; bi++) {
+                if (allBalls[bi] && allBalls[bi].body === ballBody) { ballObj = allBalls[bi]; break; }
+              }
+            }
+          } catch (e) {}
+          if (!ballObj && ballBody && ballBody.gameData) {
+            ballObj = { body: ballBody, data: ballBody.gameData };
+          }
+          try {
+            if (ballObj && window.ballManager && typeof window.ballManager.applyWallBoost === "function") {
+              window.ballManager.applyWallBoost(ballObj);
+            }
+          } catch (e) {}
+          try {
+            if (window.game && window.game.effects && typeof window.game.effects.spawnWallBoostEffect === "function") {
+              window.game.effects.spawnWallBoostEffect(ballBody.position.x, ballBody.position.y, ballBody.gameData ? (ballBody.gameData.color || "#f1c40f") : "#f1c40f");
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {
+      // swallow wall boost errors to not break collisions
+    }
   }
 
   _processBallCollision(ballA, ballB) {

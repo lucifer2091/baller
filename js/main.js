@@ -31,9 +31,16 @@ window.Game = class Game {
     this._fpsTimer = 0;
     this._animFrameId = null;
 
+    // Wizard / match state
+    this.matchModifiers = null;
+    this.countdownValue = 0;
+    this.countdownTimer = 0;
+    this._customDragging = null;
+
     this.setupInput();
     this.ui.init();
     this.arena.buildArena(800, 600);
+    this.camera.goTo(400, 300, 0.9);
     this.ui.showMainMenu();
 
     window.ballManager = this.ballManager;
@@ -84,11 +91,52 @@ window.Game = class Game {
     this._animFrameId = requestAnimationFrame(loop);
   }
 
+  // ─────────────────── UPDATE ───────────────────
   update(dt) {
     this.camera.update(dt);
 
     if (this.ui && typeof this.ui.updateHUD === "function") {
       this.ui.updateHUD(this.state, this.camera);
+    }
+
+    if (this.state === "Countdown") {
+      this.countdownTimer -= dt;
+      var overlay = document.getElementById("countdownOverlay");
+      var numEl = document.getElementById("countdownNumber");
+      var labelEl = document.getElementById("countdownLabel");
+      if (this.countdownTimer <= 0) {
+        // Advance countdown
+        this.countdownValue--;
+        if (this.countdownValue > 0) {
+          this.countdownTimer = 1.0;
+          if (numEl) { numEl.textContent = this.countdownValue; numEl.style.animation = "none"; void numEl.offsetHeight; numEl.style.animation = "popIn 0.4s ease"; }
+          if (labelEl) labelEl.textContent = "Get Ready";
+          this.effects.spawnCountdownEffect(this.arena.width/2, this.arena.height/2, this.countdownValue);
+        } else if (this.countdownValue === 0) {
+          this.countdownTimer = 0.6;
+          if (numEl) { numEl.textContent = "GO!"; numEl.style.animation = "none"; void numEl.offsetHeight; numEl.style.animation = "popIn 0.4s ease"; }
+          if (labelEl) labelEl.textContent = "FIGHT!";
+        } else {
+          // Done
+          if (overlay) overlay.classList.add("hidden");
+          // Unfreeze balls
+          var allBalls = this.ballManager.getAllBalls();
+          for (var i=0;i<allBalls.length;i++) {
+            if (allBalls[i].body) {
+              Matter.Body.setStatic(allBalls[i].body, false);
+            }
+          }
+          this.state = "Running";
+          this.simTime = 0;
+          this.ui.showPanel("simControls");
+          this.ui.showPanel("battleLog");
+          this.ui.showPanel("hud");
+          this.ui.updateSimControls("Playing");
+          this.log("FIGHT!", "#ff4444");
+        }
+      }
+      this.effects.update(dt);
+      return;
     }
 
     if (this.state === "Running") {
@@ -107,10 +155,19 @@ window.Game = class Game {
       this.ballManager.updateAI(scaledDt);
       this.ballManager.updateWeapons(scaledDt);
       this.ballManager.checkWeaponCollisions();
+      this.ballManager.updateOrbTimers(scaledDt);
       this.blockManager.checkBallBlockCollisions();
       this.blockManager.update(scaledDt);
       this.specialObjects.update(scaledDt);
       this.physics.updateSpecialObjects(scaledDt);
+
+      // Arena pads & scattered orbs
+      if (this.arena.updatePads) this.arena.updatePads(scaledDt, this.simTime);
+      if (this.arena.updateScatteredOrbs) this.arena.updateScatteredOrbs(scaledDt, this.simTime);
+      if (this.arena.checkOrbCollection) {
+        var collected = this.arena.checkOrbCollection(this.ballManager.getAllBalls());
+        // checkOrbCollection already handles heal/rotate and effects
+      }
 
       if (this.arena.boundaryType === "Wraparound") {
         this.physics.handleWraparound(this.arena.width, this.arena.height);
@@ -145,7 +202,6 @@ window.Game = class Game {
       var prevBlockCount = this._prevBlockCount || this.blockManager.getAllBlocks().length;
       var curBlockCount = this.blockManager.getAllBlocks().length;
       if (curBlockCount < prevBlockCount) {
-        // A block was broken - spawn generic effect at center
         this.effects.spawnBlockBreakEffect(this.arena.width / 2, this.arena.height / 2, "#aa8844");
       }
       this._prevBlockCount = curBlockCount;
@@ -157,6 +213,7 @@ window.Game = class Game {
     }
   }
 
+  // ─────────────────── RENDER ───────────────────
   render() {
     var arenaData = this.arena.getArenaData();
     arenaData.wallColor = this.arena.wallColor;
@@ -232,18 +289,57 @@ window.Game = class Game {
       }
     }
 
+    // Collect pads, orbs, portals, walls for renderer
+    var padsArr = [];
+    if (this.arena.orbPads) {
+      for (var pi=0; pi<this.arena.orbPads.length; pi++) {
+        var pad = this.arena.orbPads[pi];
+        padsArr.push({ x: pad.x, y: pad.y, type: pad.type, healAmount: pad.healAmount, rotMult: pad.rotMult, rotDuration: pad.rotDuration, radius: pad.radius, color: pad.color });
+      }
+    }
+    var orbsArr = [];
+    if (this.arena.orbs) {
+      for (var oi=0; oi<this.arena.orbs.length; oi++) {
+        var orb = this.arena.orbs[oi];
+        orbsArr.push({ x: orb.x, y: orb.y, type: orb.type, healAmount: orb.healAmount, rotMult: orb.rotMult, rotDuration: orb.rotDuration, radius: orb.radius, color: orb.color });
+      }
+    }
+    var portalsArr = [];
+    if (this.arena.portals) {
+      for (var po=0; po<this.arena.portals.length; po++) {
+        var portal = this.arena.portals[po];
+        var isOnCd = false, cdRem = 0;
+        if (portal.nextAvailable) {
+          var now = Date.now()/1000;
+          if (now < portal.nextAvailable) { isOnCd = true; cdRem = portal.nextAvailable - now; }
+        }
+        portalsArr.push({ x: portal.x, y: portal.y, radius: portal.radius, color: portal.color, isOnCooldown: isOnCd, cooldownRemaining: cdRem });
+      }
+    }
+    var wallsArr = [];
+    if (this.arena.customObjects) {
+      for (var wi=0; wi<this.arena.customObjects.length; wi++) {
+        var co = this.arena.customObjects[wi];
+        if (co.type === "wall" && co.body) {
+          wallsArr.push({ body: co.body, data: { width: co.w, height: co.h, color: "#555570" } });
+        }
+      }
+    }
+
     this.renderer.render({
       arena: arenaData,
       specials: specialsArr,
       blocks: blocksArr,
       balls: ballsArr,
       weapons: weaponsArr,
-      projectiles: projectilesArr
+      projectiles: projectilesArr,
+      pads: padsArr,
+      orbs: orbsArr,
+      portals: portalsArr,
+      walls: wallsArr
     });
 
-    // Render EffectsManager effects overlay
     this._renderEffectsOverlay();
-    // Render block fragments
     this._renderFragments();
   }
 
@@ -263,14 +359,14 @@ window.Game = class Game {
         ctx.textBaseline = "middle";
         ctx.fillStyle = "rgba(0,0,0," + (alpha * 0.6) + ")";
         ctx.fillText(e.text, s.x + 1, s.y + 1);
-        ctx.fillStyle = e.color.replace(')', ',' + alpha + ')').replace('rgb', 'rgba');
         if (e.color.indexOf('rgba') === -1 && e.color.indexOf('rgb') === -1) {
-          // hex color
           var hex = e.color.replace('#','');
           if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
           var num = parseInt(hex, 16);
           var r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
           ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+        } else {
+          ctx.fillStyle = e.color.replace(')', ',' + alpha + ')').replace('rgb', 'rgba');
         }
         ctx.fillText(e.text, s.x, s.y);
       } else if (e.type === "healNumber") {
@@ -278,7 +374,7 @@ window.Game = class Game {
         ctx.font = "bold " + hfs + "px 'Segoe UI', Arial, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = "rgba(" + 68 + "," + 255 + "," + 68 + "," + alpha + ")";
+        ctx.fillStyle = "rgba(68,255,68," + alpha + ")";
         ctx.fillText(e.text, s.x, s.y);
       } else if (e.type === "ring") {
         var rr = e.size * cam.zoom;
@@ -293,6 +389,13 @@ window.Game = class Game {
         ctx.arc(s.x, s.y, fr, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255,255,200," + (alpha * 0.5) + ")";
         ctx.fill();
+      } else if (e.type === "countdown") {
+        var cfs = Math.max(20, Math.round(48 * cam.zoom));
+        ctx.font = "bold " + cfs + "px 'Segoe UI', Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(255,255,255," + alpha + ")";
+        ctx.fillText(e.text, s.x, s.y);
       } else if (e.type === "particle" || e.type === "fragment") {
         var pr = e.size * cam.zoom;
         ctx.save();
@@ -339,11 +442,141 @@ window.Game = class Game {
     this.isBuildMode = false;
   }
 
+  // ─────────────────── WIZARD BATTLE ───────────────────
+  startWizardBattle(fighters, mapData, modifiers) {
+    this.clearAll();
+    this.matchModifiers = modifiers;
+
+    // Arena
+    var arenaW = 1200, arenaH = 800;
+    if (mapData.isCustom) {
+      // Custom arena already has objects; just ensure size
+      arenaW = this.arena.width;
+      arenaH = this.arena.height;
+    } else {
+      var preset = window.PRESETS.ARENA_PRESETS[mapData.preset];
+      if (preset) {
+        arenaW = preset.width || 1200;
+        arenaH = preset.height || 800;
+        this.arena.buildArena(arenaW, arenaH);
+        if (preset.generateBlocks) {
+          var genBlocks = preset.generateBlocks(arenaW, arenaH);
+          for (var bi=0; bi<genBlocks.length; bi++) {
+            var gb = genBlocks[bi];
+            this.blockManager.createBlock(gb.x, gb.y, { type: gb.type || "Brick", width: gb.w || 40, height: gb.h || 40 });
+          }
+        }
+      } else {
+        this.arena.buildArena(arenaW, arenaH);
+      }
+    }
+
+    // Gravity from modifiers
+    var grav = 1;
+    if (modifiers && modifiers.base && modifiers.base.gravity !== undefined) grav = modifiers.base.gravity;
+    this.physics.setGravity(grav);
+
+    // Scattered orbs config
+    if (modifiers && modifiers.base && modifiers.base.scatteredOrbs && modifiers.base.scatteredOrbs.enabled) {
+      var sc = modifiers.base.scatteredOrbs;
+      this.arena.setScatteredOrbs(true, sc.type, sc.healAmount, sc.rotMult, sc.rotDuration);
+    }
+
+    // Spawn fighters on circle with separation
+    var cx = arenaW / 2, cy = arenaH / 2;
+    var radius = Math.min(arenaW, arenaH) / 3;
+    radius = Math.min(radius, 280);
+    for (var i=0; i<fighters.length; i++) {
+      var f = fighters[i];
+      var angle = (i / fighters.length) * Math.PI * 2 - Math.PI/2;
+      var x = cx + Math.cos(angle) * radius;
+      var y = cy + Math.sin(angle) * radius;
+      var teamInfo = window.PRESETS.TEAMS[f.team] || window.PRESETS.TEAMS.Red;
+      if (!this.ballManager.teams[f.team]) {
+        this.ballManager.createTeam(f.team, teamInfo.color);
+      }
+      var ballConfig = {
+        name: f.name,
+        hp: f.hp, maxHp: f.hp,
+        damage: f.damage,
+        speed: f.speed,
+        size: f.size,
+        mass: f.mass,
+        team: f.team,
+        ai: f.ai,
+        weaponType: f.weaponType === "None" ? null : f.weaponType,
+        color: teamInfo.color
+      };
+      var ball = this.ballManager.createBall(x, y, ballConfig);
+      // Freeze for countdown
+      if (ball && ball.body) Matter.Body.setStatic(ball.body, true);
+    }
+
+    // Apply ball modifiers (damage2x, lifesteal, speed2x, rotSpeed, randomSize)
+    if (modifiers && modifiers.ball) {
+      // Need to apply before unfreezing, but after creation
+      // For randomSize we need to handle static bodies specially - temporarily unfreeze, resize, refreeze
+      var needUnfreeze = modifiers.ball.randomSize;
+      if (needUnfreeze) {
+        var allB = this.ballManager.getAllBalls();
+        for (var ui=0; ui<allB.length; ui++) if(allB[ui].body) Matter.Body.setStatic(allB[ui].body, false);
+      }
+      this.ballManager.applyMatchModifiers(modifiers);
+      if (needUnfreeze) {
+        var allB2 = this.ballManager.getAllBalls();
+        for (var vi=0; vi<allB2.length; vi++) {
+          if(allB2[vi].body) {
+            // Re-freeze at new positions (keep same position)
+            Matter.Body.setVelocity(allB2[vi].body, {x:0,y:0});
+            Matter.Body.setStatic(allB2[vi].body, true);
+            if (modifiers.ball.randomSize) {
+              var fromSz = allB2[vi].data.baseSize || 25;
+              var toSz = allB2[vi].data.size;
+              this.effects.spawnSizeChangeEffect(allB2[vi].body.position.x, allB2[vi].body.position.y, fromSz, toSz, allB2[vi].data.color);
+            }
+          }
+        }
+      } else {
+        // For non-size mods, just update frozen bodies' data already done
+      }
+    }
+
+    this.winCondition = "LastTeamStanding";
+    if (fighters.length === 2 || this.ballManager.teams && Object.keys(this.ballManager.teams).length <= 2) {
+      // Use team standing for wizard battles
+      this.winCondition = "LastTeamStanding";
+    }
+
+    this.isBuildMode = false;
+    this.simTime = 0;
+    this.roundTimer = 0;
+    this._prevBlockCount = this.blockManager.getAllBlocks().length;
+
+    // Center camera
+    this.camera.goTo(cx, cy, 0.85);
+
+    // Start countdown
+    this.state = "Countdown";
+    this.countdownValue = 3;
+    this.countdownTimer = 1.0;
+    var overlay = document.getElementById("countdownOverlay");
+    var numEl = document.getElementById("countdownNumber");
+    var labelEl = document.getElementById("countdownLabel");
+    if (overlay) overlay.classList.remove("hidden");
+    if (numEl) { numEl.textContent = "3"; numEl.style.animation = "none"; void numEl.offsetHeight; numEl.style.animation = "popIn 0.4s ease"; }
+    if (labelEl) labelEl.textContent = "Get Ready";
+
+    this.log("Match starting: " + fighters.length + " fighters", "#ffcc44");
+  }
+
   startSimulation() {
     if (this.state === "Running") return;
     this.storeOriginalPositions();
     this.state = "Running";
     this.simTime = 0;
+    this.ui.showPanel("simControls");
+    this.ui.showPanel("battleLog");
+    this.ui.showPanel("hud");
     this.ui.updateSimControls("Playing");
     this.log("Simulation started", "#44ff44");
   }
@@ -363,8 +596,13 @@ window.Game = class Game {
   }
 
   stopSimulation() {
-    if (this.state === "Stopped") return;
+    if (this.state === "Stopped" || this.state === "Countdown") return;
     this.state = "Stopped";
+    // Unfreeze if was counting down
+    var allB = this.ballManager.getAllBalls();
+    for (var i=0;i<allB.length;i++) if(allB[i].body) Matter.Body.setStatic(allB[i].body, false);
+    var overlay = document.getElementById("countdownOverlay");
+    if (overlay) overlay.classList.add("hidden");
     this.ui.updateSimControls("Stopped");
     this.log("Simulation stopped", "#ff6666");
   }
@@ -373,6 +611,10 @@ window.Game = class Game {
     this.state = "Stopped";
     this.simTime = 0;
     this.roundTimer = 0;
+    var allB = this.ballManager.getAllBalls();
+    for (var i=0;i<allB.length;i++) if(allB[i].body) Matter.Body.setStatic(allB[i].body, false);
+    var overlay = document.getElementById("countdownOverlay");
+    if (overlay) overlay.classList.add("hidden");
     this.effects.clear();
     this.restoreOriginalPositions();
     this.ui.updateSimControls("Stopped");
@@ -394,10 +636,13 @@ window.Game = class Game {
     this.ballManager.updateAI(scaledDt);
     this.ballManager.updateWeapons(scaledDt);
     this.ballManager.checkWeaponCollisions();
+    this.ballManager.updateOrbTimers(scaledDt);
     this.blockManager.checkBallBlockCollisions();
     this.blockManager.update(scaledDt);
     this.specialObjects.update(scaledDt);
     this.physics.updateSpecialObjects(scaledDt);
+    if (this.arena.updatePads) this.arena.updatePads(scaledDt, this.simTime);
+    if (this.arena.updateScatteredOrbs) this.arena.updateScatteredOrbs(scaledDt, this.simTime);
     this.effects.update(scaledDt);
   }
 
@@ -455,11 +700,13 @@ window.Game = class Game {
 
   setArena(width, height) {
     this.arena.buildArena(width, height);
+    this.camera.goTo(width/2, height/2, 0.9);
     this.log("Arena resized to " + width + "x" + height, "#88aa88");
   }
 
   loadArenaPreset(name) {
     this.arena.buildPreset(name);
+    this.camera.goTo(this.arena.width/2, this.arena.height/2, 0.9);
     this.log("Loaded arena preset: " + name, "#88aa88");
   }
 
@@ -478,6 +725,7 @@ window.Game = class Game {
 
     this.physics.setGravity(gravity);
     this.arena.buildArena(arenaWidth, arenaHeight);
+    this.camera.goTo(arenaWidth/2, arenaHeight/2, 0.9);
 
     if (s.boundaryType) {
       this.arena.setBoundaryType(s.boundaryType);
@@ -541,6 +789,7 @@ window.Game = class Game {
     this.log("Random battle started: " + totalBalls + " balls across " + usedTeams.length + " teams", "#44ff44");
     this.ui.showPanel("simControls");
     this.ui.showPanel("battleLog");
+    this.ui.showPanel("hud");
     this.ui.updateSimControls("Playing");
   }
 
@@ -564,6 +813,7 @@ window.Game = class Game {
 
     this.physics.setGravity(gravity);
     this.arena.buildArena(arenaWidth, arenaHeight);
+    this.camera.goTo(arenaWidth/2, arenaHeight/2, 0.9);
 
     if (sim.boundaryType) {
       this.arena.setBoundaryType(sim.boundaryType);
@@ -615,6 +865,7 @@ window.Game = class Game {
     this.log("Loaded simulation: " + (sim.name || "Custom") + " (" + totalBalls + " balls, " + teamCount + " teams)", "#ffcc44");
     this.ui.showPanel("simControls");
     this.ui.showPanel("battleLog");
+    this.ui.showPanel("hud");
     this.ui.updateSimControls("Playing");
   }
 
@@ -630,12 +881,22 @@ window.Game = class Game {
       var winningTeam = this.ballManager.checkWinCondition();
       if (winningTeam) {
         this.endRound(winningTeam, "Last team standing");
+      } else {
+        // Also check if only one ball left across all teams
+        var alive2 = this.ballManager.getAliveBalls();
+        if (alive2.length <= 1 && alive2.length > 0) {
+          this.endRound(alive2[0].data.team, "Last ball standing");
+        } else if (alive2.length === 0) {
+          this.endRound(null, "All eliminated");
+        }
       }
     }
   }
 
   endRound(winner, reason) {
     this.state = "Ended";
+    var overlay = document.getElementById("countdownOverlay");
+    if (overlay) overlay.classList.add("hidden");
     var duration = this.simTime;
     var teamStats = this.ballManager.getTeamStats();
     var teams = this.ballManager.teams;
@@ -696,10 +957,64 @@ window.Game = class Game {
       var rect = self.canvas.getBoundingClientRect();
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
+
+      // Wizard custom builder handling
+      var customBuilderVisible = document.getElementById("customMapBuilder") && !document.getElementById("customMapBuilder").classList.contains("hidden");
+      if (customBuilderVisible && e.button === 0) {
+        var worldPos = self.camera.screenToWorld(x, y);
+        var tool = self.ui.buildTool;
+        if (tool === "wall") {
+          self._customDragging = { startX: worldPos.x, startY: worldPos.y, preview: null };
+          // Create preview rect
+          return;
+        } else if (tool === "portal") {
+          var cdInput = document.getElementById("portalCooldown");
+          var cd = cdInput ? parseFloat(cdInput.value) : 3;
+          self.arena.addPortal(worldPos.x, worldPos.y, cd);
+          self.ui.updateBuildCounts();
+          self.log("Portal placed (" + cd + "s cooldown)", "#00ff88");
+          return;
+        } else if (tool === "healPad") {
+          self.ui.openBuildConfig("healPad", worldPos.x, worldPos.y);
+          return;
+        } else if (tool === "rotatePad") {
+          self.ui.openBuildConfig("rotatePad", worldPos.x, worldPos.y);
+          return;
+        } else if (tool === "delete") {
+          // Delete nearest custom object / pad / portal within 40 world units
+          var best = null, bestDist = 40, bestType = null, bestIdx = -1;
+          // Check walls
+          for (var wi=0; wi<self.arena.customObjects.length; wi++) {
+            var co = self.arena.customObjects[wi];
+            if (co.type !== "wall") continue;
+            var d = Math.sqrt(Math.pow(worldPos.x - co.x,2)+Math.pow(worldPos.y - co.y,2));
+            if (d < bestDist) { bestDist = d; best = co; bestType="wall"; bestIdx=wi; }
+          }
+          for (var pi=0; pi<self.arena.orbPads.length; pi++) {
+            var pad = self.arena.orbPads[pi];
+            var d2 = Math.sqrt(Math.pow(worldPos.x - pad.x,2)+Math.pow(worldPos.y - pad.y,2));
+            if (d2 < bestDist) { bestDist = d2; best = pad; bestType="pad"; bestIdx=pi; }
+          }
+          for (var poi=0; poi<self.arena.portals.length; poi++) {
+            var por = self.arena.portals[poi];
+            var d3 = Math.sqrt(Math.pow(worldPos.x - por.x,2)+Math.pow(worldPos.y - por.y,2));
+            if (d3 < 30 && d3 < bestDist) { bestDist = d3; best = por; bestType="portal"; bestIdx=poi; }
+          }
+          if (best) {
+            if (bestType==="wall") { if(best.body) Matter.Composite.remove(self.arena.physics.world, best.body); self.arena.customObjects.splice(bestIdx,1); }
+            else if (bestType==="pad") { if(best.body) Matter.Composite.remove(self.arena.physics.world, best.body); self.arena.orbPads.splice(bestIdx,1); }
+            else if (bestType==="portal") { if(best.body) Matter.Composite.remove(self.arena.physics.world, best.body); self.arena.portals.splice(bestIdx,1); }
+            self.ui.updateBuildCounts();
+            self.log("Deleted " + bestType, "#ff6666");
+          }
+          return;
+        }
+      }
+
       self.camera.onMouseDown(x, y, e.button);
 
-      if (self.isBuildMode && e.button === 0) {
-        var worldPos = self.camera.screenToWorld(x, y);
+      if (self.isBuildMode && e.button === 0 && !customBuilderVisible) {
+        var worldPos2 = self.camera.screenToWorld(x, y);
         var tool = self.ui.currentTool;
         var objType = self.ui.currentObjectType;
 
@@ -720,13 +1035,13 @@ window.Game = class Game {
           blockData.position = { x: sp2.x, y: sp2.y };
           self.spawnBlock(blockData);
         } else if (tool === "wall") {
-          self.blockManager.createBlock(worldPos.x, worldPos.y, { type: "Indestructible", size: 40 });
+          self.blockManager.createBlock(worldPos2.x, worldPos2.y, { type: "Indestructible", size: 40 });
         } else if (tool === "delete") {
           var allBalls = self.ballManager.getAllBalls();
           for (var i = allBalls.length - 1; i >= 0; i--) {
             var ball = allBalls[i];
-            var dx = worldPos.x - ball.body.position.x;
-            var dy = worldPos.y - ball.body.position.y;
+            var dx = worldPos2.x - ball.body.position.x;
+            var dy = worldPos2.y - ball.body.position.y;
             if (Math.sqrt(dx * dx + dy * dy) < ball.data.size + 10) {
               self.ballManager.removeBall(ball.id);
               self.log("Deleted ball: " + ball.data.name, "#ff6666");
@@ -736,8 +1051,8 @@ window.Game = class Game {
           var allBlocks = self.blockManager.getAllBlocks();
           for (var i = allBlocks.length - 1; i >= 0; i--) {
             var block = allBlocks[i];
-            var dx = worldPos.x - block.body.position.x;
-            var dy = worldPos.y - block.body.position.y;
+            var dx = worldPos2.x - block.body.position.x;
+            var dy = worldPos2.y - block.body.position.y;
             if (Math.sqrt(dx * dx + dy * dy) < block.data.size) {
               self.blockManager.removeBlock(block.id);
               self.log("Deleted block", "#ff6666");
@@ -752,10 +1067,35 @@ window.Game = class Game {
       var rect = self.canvas.getBoundingClientRect();
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
+      if (self._customDragging) {
+        // Wall drag preview could be drawn via renderer - for now just track
+        var worldPos = self.camera.screenToWorld(x, y);
+        self._customDragging.endX = worldPos.x;
+        self._customDragging.endY = worldPos.y;
+        return;
+      }
       self.camera.onMouseMove(x, y);
     });
 
     this.canvas.addEventListener('mouseup', function (e) {
+      if (self._customDragging) {
+        var rect = self.canvas.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        var worldPos = self.camera.screenToWorld(x, y);
+        var start = self._customDragging;
+        var w = Math.abs(worldPos.x - start.startX);
+        var h = Math.abs(worldPos.y - start.startY);
+        var cx = (worldPos.x + start.startX)/2;
+        var cy = (worldPos.y + start.startY)/2;
+        if (w < 20) w = 40;
+        if (h < 20) h = 20;
+        self.arena.addCustomWall(cx, cy, w, h);
+        self.ui.updateBuildCounts();
+        self.log("Wall placed " + Math.round(w) + "x" + Math.round(h), "#8888ff");
+        self._customDragging = null;
+        return;
+      }
       self.camera.onMouseUp();
     });
 
@@ -826,6 +1166,12 @@ window.Game = class Game {
     this.effects.clear();
     this.arena.clear();
     this.physics.clear();
+    this.matchModifiers = null;
+    this.state = "Stopped";
+    this.countdownValue = 0;
+    this.countdownTimer = 0;
+    var overlay = document.getElementById("countdownOverlay");
+    if (overlay) overlay.classList.add("hidden");
     this._savedPositions = null;
   }
 

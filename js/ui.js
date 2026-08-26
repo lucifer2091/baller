@@ -5,6 +5,14 @@ window.UIManager = class UIManager {
     this.currentObjectType = "Ball";
     this.selectedObject = null;
     this._logAutoScroll = true;
+
+    // Wizard state
+    this.wizardFighters = [];
+    this.editingFighterIndex = -1;
+    this.selectedMapPreset = null;
+    this.isCustomMap = false;
+    this.buildTool = "wall";
+    this.pendingBuildConfig = null;
   }
 
   // ──────────────────────────── INIT ────────────────────────────
@@ -33,6 +41,13 @@ window.UIManager = class UIManager {
       self.setActiveObjectType(btn.getAttribute("data-object-type"));
     });
 
+    // Bind every element with data-build-tool (wizard custom builder)
+    document.addEventListener("click", function(e) {
+      var btn = e.target.closest("[data-build-tool]");
+      if (!btn) return;
+      self.setBuildTool(btn.getAttribute("data-build-tool"));
+    });
+
     // Bind every element with data-speed
     document.addEventListener("click", function(e) {
       var btn = e.target.closest("[data-speed]");
@@ -44,11 +59,10 @@ window.UIManager = class UIManager {
       }
     });
 
-    // Bind physics preset buttons (only inside settingsPanel)
+    // Bind every element with data-preset (physics preset - only inside settingsPanel)
     document.addEventListener("click", function(e) {
       var btn = e.target.closest("[data-preset]");
       if (!btn) return;
-      // Only handle physics presets if inside settingsPanel
       if (!btn.closest("#settingsPanel")) return;
       self._applyPhysicsPreset(btn.getAttribute("data-preset"));
     });
@@ -72,6 +86,18 @@ window.UIManager = class UIManager {
       }
     });
 
+    // Speed selector change
+    var speedSel = document.getElementById("speed-select");
+    if (speedSel) {
+      speedSel.addEventListener("change", function() {
+        var speed = parseFloat(this.value);
+        if (self.game && typeof self.game.setTimeScale === "function") {
+          self.game.setTimeScale(speed);
+          self.updateSpeedDisplay(speed);
+        }
+      });
+    }
+
     // Gravity slider live update
     var gravSlider = document.getElementById("gravitySlider");
     if (gravSlider) {
@@ -81,18 +107,6 @@ window.UIManager = class UIManager {
         if (label) label.textContent = val.toFixed(1);
         if (self.game && self.game.physics && self.game.physics.engine) {
           self.game.physics.engine.gravity.y = val;
-        }
-      });
-    }
-
-    // Speed selector change
-    var speedSel = document.getElementById("speed-select");
-    if (speedSel) {
-      speedSel.addEventListener("change", function() {
-        var speed = parseFloat(this.value);
-        if (self.game && typeof self.game.setTimeScale === "function") {
-          self.game.setTimeScale(speed);
-          self.updateSpeedDisplay(speed);
         }
       });
     }
@@ -182,6 +196,55 @@ window.UIManager = class UIManager {
         }
       });
     }
+
+    // ── Wizard listeners ──
+    var addFighterBtn = document.getElementById("addFighterBtn");
+    if (addFighterBtn) addFighterBtn.addEventListener("click", function() { self.openFighterEditor(-1); });
+
+    var fighterSaveBtn = document.getElementById("fighterSaveBtn");
+    if (fighterSaveBtn) fighterSaveBtn.addEventListener("click", function() { self.saveFighterEditor(); });
+
+    // Fighter preset change -> apply preset defaults to sliders
+    var fighterPresetEl = document.getElementById("fighterPreset");
+    if (fighterPresetEl) fighterPresetEl.addEventListener("change", function() { self.applyFighterPreset(this.value); });
+
+    // Fighter slider live values
+    ["fighterHp","fighterDamage","fighterSpeed","fighterSize","fighterMass"].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener("input", function() {
+        var valEl = document.getElementById(id + "Val");
+        if (valEl) valEl.textContent = this.value;
+        self.updateWeaponPreview();
+      });
+    });
+    var fighterWeaponEl = document.getElementById("fighterWeapon");
+    if (fighterWeaponEl) fighterWeaponEl.addEventListener("change", function() { self.updateWeaponPreview(); });
+
+    // Custom map builder clear
+    var buildClearBtn = document.getElementById("buildClearBtn");
+    if (buildClearBtn) buildClearBtn.addEventListener("click", function() { self.clearCustomMap(); });
+
+    // Build config save
+    var buildConfigSave = document.getElementById("buildConfigSave");
+    if (buildConfigSave) buildConfigSave.addEventListener("click", function() { self.confirmBuildConfig(); });
+
+    // Map preset grid handled dynamically in showWizardMap
+
+    // Custom map button
+    var customMapBtn = document.getElementById("customMapBtn");
+    if (customMapBtn) customMapBtn.addEventListener("click", function() { self.showCustomBuilder(); });
+
+    // Modifier scattered orbs toggle
+    var modScattered = document.getElementById("modScatteredOrbs");
+    if (modScattered) modScattered.addEventListener("change", function() {
+      var opts = document.getElementById("scatteredOrbOptions");
+      if (opts) opts.classList.toggle("hidden", !this.checked);
+    });
+    var modGrav = document.getElementById("modGravity");
+    if (modGrav) modGrav.addEventListener("input", function() {
+      var v = document.getElementById("modGravityVal");
+      if (v) v.textContent = parseFloat(this.value).toFixed(1);
+    });
   }
 
   // ──────────────────────────── ACTION ROUTER ────────────────────────────
@@ -190,10 +253,7 @@ window.UIManager = class UIManager {
     switch (action) {
       case "create":
         self.hideMainMenu();
-        self.showPanel("buildToolbar");
-        if (self.game && typeof self.game.enterBuildMode === "function") {
-          self.game.enterBuildMode();
-        }
+        self.showWizardFighters();
         break;
 
       case "random-battle":
@@ -216,6 +276,7 @@ window.UIManager = class UIManager {
         break;
 
       case "back-to-menu":
+        self.hideAllWizard();
         self.hidePanel("buildToolbar");
         self.hidePanel("examplesPanel");
         self.hidePanel("saveLoadPanel");
@@ -224,7 +285,56 @@ window.UIManager = class UIManager {
         self.hidePanel("arenaEditor");
         self.hidePanel("settingsPanel");
         self.hidePanel("resultsPanel");
+        self.hidePanel("simControls");
+        self.hidePanel("battleLog");
+        self.hidePanel("hud");
+        if (self.game) { self.game.clearAll(); self.game.state = "Stopped"; }
         self.showMainMenu();
+        break;
+
+      case "wizard-back-menu":
+        self.hideAllWizard();
+        self.showMainMenu();
+        break;
+
+      case "wizard-fighters-next":
+        if (self.wizardFighters.length < 2) return;
+        self.hidePanel("wizardFighters");
+        self.showWizardMap();
+        break;
+
+      case "wizard-map-back":
+        self.hidePanel("wizardMap");
+        self.hidePanel("customMapBuilder");
+        self.showWizardFighters();
+        break;
+
+      case "wizard-map-next":
+        if (!self.selectedMapPreset && !self.isCustomMap) return;
+        self.hidePanel("wizardMap");
+        self.hidePanel("customMapBuilder");
+        self.showWizardModifiers();
+        break;
+
+      case "wizard-custom-back":
+        self.hidePanel("customMapBuilder");
+        self.showWizardMap();
+        break;
+
+      case "wizard-custom-next":
+        self.isCustomMap = true;
+        self.hidePanel("customMapBuilder");
+        self.showWizardModifiers();
+        break;
+
+      case "wizard-mod-back":
+        self.hidePanel("wizardModifiers");
+        if (self.isCustomMap) self.showCustomBuilder();
+        else self.showWizardMap();
+        break;
+
+      case "wizard-finish":
+        self.finishWizard();
         break;
 
       case "play":
@@ -277,7 +387,13 @@ window.UIManager = class UIManager {
         break;
 
       case "close":
-        self.hidePanel(btn.closest(".panel, .modal") ? btn.closest(".panel, .modal").id : null);
+        var closest = btn.closest(".wizard-panel, .panel, .modal");
+        if (closest && closest.id) self.hidePanel(closest.id);
+        else {
+          // fallback: hide any visible modal
+          var mods = document.querySelectorAll(".modal:not(.hidden)");
+          for (var i=0;i<mods.length;i++) self.hidePanel(mods[i].id);
+        }
         break;
 
       case "close-results":
@@ -322,13 +438,13 @@ window.UIManager = class UIManager {
 
       case "zoomIn":
         if (self.game && self.game.camera) {
-          self.game.camera.zoomAt(self.canvas.width / 2, self.canvas.height / 2, 1.3);
+          self.game.camera.zoomAt(self.game.canvas.width / 2, self.game.canvas.height / 2, 1.3);
         }
         break;
 
       case "zoomOut":
         if (self.game && self.game.camera) {
-          self.game.camera.zoomAt(self.canvas.width / 2, self.canvas.height / 2, 0.7);
+          self.game.camera.zoomAt(self.game.canvas.width / 2, self.game.canvas.height / 2, 0.7);
         }
         break;
 
@@ -382,6 +498,15 @@ window.UIManager = class UIManager {
     }
   }
 
+  hideAllWizard() {
+    this.hidePanel("wizardFighters");
+    this.hidePanel("wizardMap");
+    this.hidePanel("wizardModifiers");
+    this.hidePanel("customMapBuilder");
+    this.hidePanel("fighterEditor");
+    this.hidePanel("buildConfigModal");
+  }
+
   // ──────────────────────────── MAIN MENU ────────────────────────────
   showMainMenu() {
     this.showPanel("mainMenu");
@@ -389,6 +514,363 @@ window.UIManager = class UIManager {
 
   hideMainMenu() {
     this.hidePanel("mainMenu");
+  }
+
+  // ──────────────────────────── WIZARD: FIGHTERS ────────────────────────────
+  showWizardFighters() {
+    this.showPanel("wizardFighters");
+    this.refreshFighterList();
+  }
+
+  refreshFighterList() {
+    var container = document.getElementById("fighterList");
+    if (!container) return;
+    container.innerHTML = "";
+    for (var i=0;i<this.wizardFighters.length;i++) {
+      var f = this.wizardFighters[i];
+      var card = document.createElement("div");
+      card.className = "fighter-card";
+      var teamColor = (window.PRESETS && PRESETS.TEAMS[f.team]) ? PRESETS.TEAMS[f.team].color : "#3498db";
+      card.style.borderLeftColor = teamColor;
+      var info = document.createElement("div");
+      info.className = "fighter-info";
+      info.innerHTML = '<div class="fighter-name">' + f.name + ' <span style="font-weight:400;color:'+teamColor+'">['+f.team+']</span></div>' +
+        '<div class="fighter-stats">HP:'+f.hp+' DMG:'+f.damage+' SPD:'+f.speed+' SZ:'+f.size+' W:'+ (f.weaponType||"None")+' AI:'+f.ai+'</div>';
+      card.appendChild(info);
+      var actions = document.createElement("div");
+      actions.className = "fighter-actions";
+      var editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.className = "btn btn-sm btn-secondary";
+      editBtn.addEventListener("click", (function(idx){ return function(){ this.openFighterEditor(idx); }.bind(this); }.bind(this))(i));
+      var delBtn = document.createElement("button");
+      delBtn.textContent = "×";
+      delBtn.className = "btn btn-sm btn-stop";
+      delBtn.addEventListener("click", (function(idx){ return function(){ this.wizardFighters.splice(idx,1); this.refreshFighterList(); }.bind(this); }.bind(this))(i));
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      card.appendChild(actions);
+      container.appendChild(card);
+    }
+    var nextBtn = document.getElementById("fightersNextBtn");
+    var warn = document.getElementById("fighterCountWarning");
+    var ok = this.wizardFighters.length >= 2;
+    if (nextBtn) nextBtn.disabled = !ok;
+    if (warn) warn.classList.toggle("hidden", ok);
+  }
+
+  openFighterEditor(index) {
+    this.editingFighterIndex = index;
+    var isEdit = index >= 0 && index < this.wizardFighters.length;
+    var f = isEdit ? this.wizardFighters[index] : null;
+    var title = document.getElementById("fighterEditorTitle");
+    if (title) title.textContent = isEdit ? "Edit Fighter" : "Add Fighter";
+    if (f) {
+      document.getElementById("fighterPreset").value = f.preset || "Basic";
+      document.getElementById("fighterName").value = f.name;
+      document.getElementById("fighterHp").value = f.hp;
+      document.getElementById("fighterHpVal").textContent = f.hp;
+      document.getElementById("fighterDamage").value = f.damage;
+      document.getElementById("fighterDamageVal").textContent = f.damage;
+      document.getElementById("fighterSpeed").value = f.speed;
+      document.getElementById("fighterSpeedVal").textContent = f.speed;
+      document.getElementById("fighterSize").value = f.size;
+      document.getElementById("fighterSizeVal").textContent = f.size;
+      document.getElementById("fighterMass").value = f.mass;
+      document.getElementById("fighterMassVal").textContent = f.mass;
+      document.getElementById("fighterWeapon").value = f.weaponType || "None";
+      document.getElementById("fighterAi").value = f.ai || "Aggressive";
+      document.getElementById("fighterTeam").value = f.team || "Red";
+    } else {
+      // defaults from Basic preset
+      var preset = (window.PRESETS && PRESETS.BALL_PRESETS && PRESETS.BALL_PRESETS.Basic) || { hp:500, damage:25, speed:3, size:25, mass:5 };
+      document.getElementById("fighterPreset").value = "Basic";
+      document.getElementById("fighterName").value = "Fighter " + (this.wizardFighters.length+1);
+      document.getElementById("fighterHp").value = preset.hp;
+      document.getElementById("fighterHpVal").textContent = preset.hp;
+      document.getElementById("fighterDamage").value = preset.damage;
+      document.getElementById("fighterDamageVal").textContent = preset.damage;
+      document.getElementById("fighterSpeed").value = preset.speed;
+      document.getElementById("fighterSpeedVal").textContent = preset.speed;
+      document.getElementById("fighterSize").value = preset.size;
+      document.getElementById("fighterSizeVal").textContent = preset.size;
+      document.getElementById("fighterMass").value = preset.mass;
+      document.getElementById("fighterMassVal").textContent = preset.mass;
+      document.getElementById("fighterWeapon").value = preset.weaponType || "Sword";
+      document.getElementById("fighterAi").value = preset.ai || "Aggressive";
+      // auto assign team alternating
+      var teams = ["Red","Blue","Green","Yellow"];
+      document.getElementById("fighterTeam").value = teams[this.wizardFighters.length % teams.length];
+    }
+    this.updateWeaponPreview();
+    this.showPanel("fighterEditor");
+  }
+
+  applyFighterPreset(presetName) {
+    var preset = window.PRESETS && PRESETS.BALL_PRESETS && PRESETS.BALL_PRESETS[presetName];
+    if (!preset) return;
+    document.getElementById("fighterHp").value = preset.hp;
+    document.getElementById("fighterHpVal").textContent = preset.hp;
+    document.getElementById("fighterDamage").value = preset.damage;
+    document.getElementById("fighterDamageVal").textContent = preset.damage;
+    document.getElementById("fighterSpeed").value = preset.speed;
+    document.getElementById("fighterSpeedVal").textContent = preset.speed;
+    document.getElementById("fighterSize").value = preset.size;
+    document.getElementById("fighterSizeVal").textContent = preset.size;
+    document.getElementById("fighterMass").value = preset.mass;
+    document.getElementById("fighterMassVal").textContent = preset.mass;
+    document.getElementById("fighterWeapon").value = preset.weaponType || "None";
+    document.getElementById("fighterAi").value = preset.ai || "Aggressive";
+    var nameEl = document.getElementById("fighterName");
+    if (nameEl && !nameEl.value.startsWith("Fighter")) { /* keep custom name */ } else if (nameEl) nameEl.value = presetName + " " + (this.wizardFighters.length+1);
+    this.updateWeaponPreview();
+  }
+
+  updateWeaponPreview() {
+    var wType = document.getElementById("fighterWeapon").value;
+    var preview = document.getElementById("weaponStatPreview");
+    if (!preview) return;
+    if (wType === "None") { preview.textContent = "No weapon — pure ball physics"; return; }
+    var w = window.PRESETS && PRESETS.WEAPON_TYPES && PRESETS.WEAPON_TYPES[wType];
+    if (!w || !w.statMods) { preview.textContent = wType + " weapon"; return; }
+    var mods = w.statMods;
+    var parts = [];
+    if (mods.damage) parts.push((mods.damage>0?"+":"")+mods.damage+" dmg");
+    if (mods.speed) parts.push((mods.speed>0?"+":"")+mods.speed+" spd");
+    if (mods.size) parts.push((mods.size>0?"+":"")+mods.size+" size");
+    if (w.behavior) parts.push(w.behavior + " · " + (w.description||""));
+    preview.textContent = parts.join(" · ") || wType;
+  }
+
+  saveFighterEditor() {
+    var f = {
+      preset: document.getElementById("fighterPreset").value,
+      name: document.getElementById("fighterName").value || "Fighter",
+      hp: parseInt(document.getElementById("fighterHp").value,10),
+      damage: parseInt(document.getElementById("fighterDamage").value,10),
+      speed: parseFloat(document.getElementById("fighterSpeed").value),
+      size: parseInt(document.getElementById("fighterSize").value,10),
+      mass: parseInt(document.getElementById("fighterMass").value,10),
+      weaponType: document.getElementById("fighterWeapon").value,
+      ai: document.getElementById("fighterAi").value,
+      team: document.getElementById("fighterTeam").value
+    };
+    f.maxHp = f.hp;
+    if (this.editingFighterIndex >=0) {
+      this.wizardFighters[this.editingFighterIndex] = f;
+    } else {
+      this.wizardFighters.push(f);
+    }
+    this.hidePanel("fighterEditor");
+    this.refreshFighterList();
+  }
+
+  // ──────────────────────────── WIZARD: MAP ────────────────────────────
+  showWizardMap() {
+    var grid = document.getElementById("mapPresetGrid");
+    if (grid) {
+      grid.innerHTML = "";
+      var presets = (window.PRESETS && PRESETS.ARENA_PRESETS) ? PRESETS.ARENA_PRESETS : {};
+      var keys = Object.keys(presets);
+      for (var i=0;i<keys.length;i++) {
+        var name = keys[i];
+        var p = presets[name];
+        var card = document.createElement("div");
+        card.className = "preset-card" + (this.selectedMapPreset===name ? " selected" : "");
+        card.setAttribute("data-map-preset", name);
+        card.innerHTML = '<div class="preset-name">'+name+'</div><div class="preset-desc">'+(p.description||"")+'</div>';
+        card.addEventListener("click", (function(n){ return function(){ this.selectMapPreset(n); }.bind(this); }.bind(this))(name));
+        grid.appendChild(card);
+      }
+    }
+    this.showPanel("wizardMap");
+    this.updateMapNext();
+  }
+
+  selectMapPreset(name) {
+    this.selectedMapPreset = name;
+    this.isCustomMap = false;
+    var cards = document.querySelectorAll("#mapPresetGrid .preset-card");
+    for (var i=0;i<cards.length;i++) {
+      cards[i].classList.toggle("selected", cards[i].getAttribute("data-map-preset")===name);
+    }
+    this.updateMapNext();
+  }
+
+  updateMapNext() {
+    var btn = document.getElementById("mapNextBtn");
+    if (btn) btn.disabled = !this.selectedMapPreset && !this.isCustomMap;
+  }
+
+  showCustomBuilder() {
+    this.isCustomMap = true;
+    this.selectedMapPreset = null;
+    var cards = document.querySelectorAll("#mapPresetGrid .preset-card");
+    for (var i=0;i<cards.length;i++) cards[i].classList.remove("selected");
+    this.updateMapNext();
+    this.hidePanel("wizardMap");
+    this.showPanel("customMapBuilder");
+    this.updateBuildCounts();
+    // Center camera on arena
+    if (this.game && this.game.camera) {
+      this.game.camera.goTo(this.game.arena.width/2, this.game.arena.height/2, 0.9);
+    }
+  }
+
+  setBuildTool(tool) {
+    this.buildTool = tool;
+    var btns = document.querySelectorAll("[data-build-tool]");
+    for (var i=0;i<btns.length;i++) {
+      btns[i].classList.toggle("active", btns[i].getAttribute("data-build-tool")===tool);
+    }
+    this.renderBuildOptions();
+  }
+
+  renderBuildOptions() {
+    var container = document.getElementById("buildToolOptions");
+    if (!container) return;
+    container.innerHTML = "";
+    if (this.buildTool === "wall") {
+      container.innerHTML = '<span style="color:#aaa;">Click and drag on canvas to create a wall.</span>';
+    } else if (this.buildTool === "portal") {
+      container.innerHTML = '<span style="color:#aaa;">Click on canvas to place a portal pair. Cooldown (s):</span> <input type="number" id="portalCooldown" value="3" min="0.5" max="30" step="0.5" style="width:70px;">';
+    } else if (this.buildTool === "healPad") {
+      container.innerHTML = '<span style="color:#aaa;">Click to place a heal pad.</span>';
+    } else if (this.buildTool === "rotatePad") {
+      container.innerHTML = '<span style="color:#aaa;">Click to place a rotate pad.</span>';
+    } else if (this.buildTool === "delete") {
+      container.innerHTML = '<span style="color:#e74c3c;">Click on an object to delete it.</span>';
+    }
+  }
+
+  updateBuildCounts() {
+    if (!this.game || !this.game.arena) return;
+    var pads = this.game.arena.orbPads || [];
+    var healCount = 0, rotCount = 0;
+    for (var i=0;i<pads.length;i++) { if (pads[i].type==="heal") healCount++; else rotCount++; }
+    var portals = this.game.arena.portals ? this.game.arena.portals.length : 0;
+    var walls = this.game.arena.customObjects ? this.game.arena.customObjects.filter(function(o){return o.type==="wall";}).length : 0;
+    var el;
+    el = document.getElementById("buildWallCount"); if(el) el.textContent = walls;
+    el = document.getElementById("buildPortalCount"); if(el) el.textContent = Math.floor(portals/2);
+    el = document.getElementById("buildHealCount"); if(el) el.textContent = healCount;
+    el = document.getElementById("buildRotateCount"); if(el) el.textContent = rotCount;
+  }
+
+  clearCustomMap() {
+    if (this.game && this.game.arena) {
+      // Remove all custom objects via arena clear custom
+      var arena = this.game.arena;
+      // Remove bodies
+      for (var i=arena.customObjects.length-1;i>=0;i--) {
+        var obj = arena.customObjects[i];
+        if (obj.body) Matter.Composite.remove(arena.physics.world, obj.body);
+      }
+      arena.customObjects = [];
+      for (var j=arena.orbPads.length-1;j>=0;j--) {
+        if (arena.orbPads[j].body) Matter.Composite.remove(arena.physics.world, arena.orbPads[j].body);
+      }
+      arena.orbPads = [];
+      arena.portals = [];
+      arena.orbs = [];
+      this.updateBuildCounts();
+      this.addBattleLogEntry("Custom map cleared", "#aaaaaa");
+    }
+  }
+
+  openBuildConfig(tool, x, y) {
+    this.pendingBuildConfig = { tool: tool, x: x, y: y };
+    var title = document.getElementById("buildConfigTitle");
+    var body = document.getElementById("buildConfigBody");
+    if (!body) return;
+    body.innerHTML = "";
+    if (tool === "healPad") {
+      if(title) title.textContent = "Heal Pad";
+      body.innerHTML = '<label>Heal Amount: <input type="number" id="cfgHealAmount" value="80" min="10" max="1000"></label>' +
+        '<label>Spawn Duration (s): <input type="number" id="cfgHealSpawn" value="8" min="2" max="60"></label>';
+    } else if (tool === "rotatePad") {
+      if(title) title.textContent = "Rotate Pad";
+      body.innerHTML = '<label>Rotation Multiplier: <input type="number" id="cfgRotMult" value="1.5" min="1.1" max="5" step="0.1"></label>' +
+        '<label>Rotation Duration (s): <input type="number" id="cfgRotDur" value="6" min="2" max="30"></label>' +
+        '<label>Spawn Duration (s): <input type="number" id="cfgRotSpawn" value="8" min="2" max="60"></label>';
+    } else if (tool === "portal") {
+      if(title) title.textContent = "Portal Cooldown";
+      body.innerHTML = '<label>Cooldown (s): <input type="number" id="cfgPortalCd" value="3" min="0.5" max="30" step="0.5"></label>';
+      // For portal we place immediately, config is cooldown
+    }
+    this.showPanel("buildConfigModal");
+  }
+
+  confirmBuildConfig() {
+    if (!this.pendingBuildConfig || !this.game || !this.game.arena) return;
+    var cfg = this.pendingBuildConfig;
+    var arena = this.game.arena;
+    if (cfg.tool === "healPad") {
+      var ha = parseInt(document.getElementById("cfgHealAmount").value,10) || 80;
+      var hs = parseFloat(document.getElementById("cfgHealSpawn").value) || 8;
+      arena.addHealPad(cfg.x, cfg.y, ha, hs);
+    } else if (cfg.tool === "rotatePad") {
+      var rm = parseFloat(document.getElementById("cfgRotMult").value) || 1.5;
+      var rd = parseFloat(document.getElementById("cfgRotDur").value) || 6;
+      var rs = parseFloat(document.getElementById("cfgRotSpawn").value) || 8;
+      arena.addRotatePad(cfg.x, cfg.y, rm, rd, rs);
+    } else if (cfg.tool === "portal") {
+      var cd = parseFloat(document.getElementById("cfgPortalCd").value) || 3;
+      arena.addPortal(cfg.x, cfg.y, cd);
+    }
+    this.hidePanel("buildConfigModal");
+    this.pendingBuildConfig = null;
+    this.updateBuildCounts();
+  }
+
+  // ──────────────────────────── WIZARD: MODIFIERS ────────────────────────────
+  showWizardModifiers() {
+    this.showPanel("wizardModifiers");
+  }
+
+  getWizardModifiers() {
+    return {
+      base: {
+        wallSpeedBoost: document.getElementById("modWallBoost") ? document.getElementById("modWallBoost").checked : false,
+        gravity: document.getElementById("modGravity") ? parseFloat(document.getElementById("modGravity").value) : 1,
+        scatteredOrbs: (function(){
+          var en = document.getElementById("modScatteredOrbs");
+          if (!en || !en.checked) return { enabled:false };
+          return {
+            enabled:true,
+            type: document.getElementById("modOrbType").value,
+            healAmount: parseInt(document.getElementById("modOrbHeal").value,10)||80,
+            rotMult: parseFloat(document.getElementById("modOrbRotMult").value)||1.5,
+            rotDuration: parseInt(document.getElementById("modOrbRotDur").value,10)||8
+          };
+        })()
+      },
+      ball: {
+        damage2x: document.getElementById("mod2xDamage") ? document.getElementById("mod2xDamage").checked : false,
+        lifesteal: document.getElementById("modLifesteal") ? document.getElementById("modLifesteal").checked : false,
+        speed2x: document.getElementById("mod2xSpeed") ? document.getElementById("mod2xSpeed").checked : false,
+        rotSpeed15x: document.getElementById("modRotSpeed") ? document.getElementById("modRotSpeed").checked : false,
+        randomSize: document.getElementById("modRandomSize") ? document.getElementById("modRandomSize").checked : false
+      }
+    };
+  }
+
+  finishWizard() {
+    if (this.wizardFighters.length < 2) {
+      this.addBattleLogEntry("Need at least 2 fighters!", "#ff4444");
+      return;
+    }
+    var mapData = null;
+    if (this.isCustomMap) {
+      mapData = { isCustom:true, arena: this.game.arena };
+    } else {
+      mapData = { isCustom:false, preset: this.selectedMapPreset };
+    }
+    var modifiers = this.getWizardModifiers();
+    this.hideAllWizard();
+    if (this.game && typeof this.game.startWizardBattle === "function") {
+      this.game.startWizardBattle(this.wizardFighters, mapData, modifiers);
+    }
   }
 
   // ──────────────────────────── BUILD TOOLBAR ────────────────────────────
@@ -641,7 +1123,7 @@ window.UIManager = class UIManager {
   // ──────────────────────────── HUD ────────────────────────────
   updateHUD(state, camera) {
     var hudState = document.getElementById("hudState");
-    if (hudState) hudState.textContent = state || "Stopped";
+    if (hudState) hudState.textContent = "State: " + (state || "Stopped");
 
     var hudFps = document.getElementById("hudFps");
     if (hudFps && this.game && this.game.fps !== undefined) {
@@ -657,17 +1139,17 @@ window.UIManager = class UIManager {
 
     var hudZoom = document.getElementById("hudZoom");
     if (hudZoom && camera && camera.zoom !== undefined) {
-      hudZoom.textContent = camera.zoom.toFixed(2) + "x";
+      hudZoom.textContent = "Zoom: " + camera.zoom.toFixed(2) + "x";
     }
 
     var hudTime = document.getElementById("hudTime");
     if (hudTime && this.game && this.game.simTime !== undefined) {
-      hudTime.textContent = this.game.simTime.toFixed(1) + "s";
+      hudTime.textContent = "Time: " + this.game.simTime.toFixed(1) + "s";
     }
 
     var hudScale = document.getElementById("hudTimeScale");
     if (hudScale && this.game && this.game.timeScale !== undefined) {
-      hudScale.textContent = this.game.timeScale + "x";
+      hudScale.textContent = "Speed: " + this.game.timeScale + "x";
     }
   }
 
@@ -821,7 +1303,6 @@ window.UIManager = class UIManager {
   _toggleGrid() { this.addBattleLogEntry("Grid toggled", "#aaaaaa"); }
 
   _launchExample(index) {
-    if (!window.PRESETS) return;
     var sims = (PRESETS.SIMULATIONS || PRESETS.EXAMPLES) ? (PRESETS.SIMULATIONS || PRESETS.EXAMPLES) : {};
     var examples = Array.isArray(sims) ? sims : Object.values(sims);
     if (index < 0 || index >= examples.length) return;
@@ -845,7 +1326,7 @@ window.UIManager = class UIManager {
 
   _refreshSaveList() {
     var container = document.getElementById("saveListContainer");
-    if (!container || !this.game || !this.game.saveManager) return;
+    if (!container || !this.game || !this.game.saves) return;
     container.innerHTML = "";
     var saves = this.game.saves.getSaveList();
     if (saves.length === 0) {

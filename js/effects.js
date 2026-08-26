@@ -167,6 +167,131 @@ window.EffectsManager = class EffectsManager {
     });
   }
 
+  spawnHealOrbPickup(x, y, color) {
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 / 6) * i + Math.random() * 0.3;
+      const speed = 50 + Math.random() * 80;
+      this.effects.push({
+        type: "particle",
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: color,
+        size: 2 + Math.random() * 3,
+        life: 0.4 + Math.random() * 0.4,
+        maxLife: 0.8,
+        text: "",
+        alpha: 1
+      });
+    }
+    this.effects.push({
+      type: "healNumber",
+      x: x + (Math.random() - 0.5) * 10,
+      y: y - 10,
+      vx: 0,
+      vy: -50,
+      color: color,
+      size: 14,
+      life: 1.0,
+      maxLife: 1.0,
+      text: "+heal",
+      alpha: 1
+    });
+  }
+
+  spawnRotateOrbPickup(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 / 8) * i + Math.random() * 0.2;
+      const speed = 60 + Math.random() * 90;
+      this.effects.push({
+        type: "particle",
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: color,
+        size: 2.5 + Math.random() * 3,
+        life: 0.5 + Math.random() * 0.3,
+        maxLife: 0.8,
+        text: "",
+        alpha: 1,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 10
+      });
+    }
+    this.effects.push({
+      type: "damageNumber",
+      x: x + (Math.random() - 0.5) * 10,
+      y: y - 10,
+      vx: (Math.random() - 0.5) * 20,
+      vy: -60,
+      color: color,
+      size: 16,
+      life: 1.0,
+      maxLife: 1.0,
+      text: "SPEED!",
+      alpha: 1
+    });
+  }
+
+  spawnCountdownEffect(x, y, number) {
+    this.effects.push({
+      type: "countdown",
+      x: x,
+      y: y,
+      vx: 0,
+      vy: 0,
+      color: "#ffffff",
+      size: 40,
+      maxSize: 80,
+      life: 0.6,
+      maxLife: 0.6,
+      text: number.toString(),
+      alpha: 1
+    });
+  }
+
+  spawnSizeChangeEffect(x, y, fromSize, toSize, color) {
+    this.effects.push({
+      type: "ring",
+      x: x,
+      y: y,
+      vx: 0,
+      vy: 0,
+      color: color,
+      size: fromSize,
+      maxSize: toSize,
+      fromSize: fromSize,
+      toSize: toSize,
+      life: 0.4,
+      maxLife: 0.4,
+      text: "",
+      alpha: 1
+    });
+  }
+
+  spawnWallBoostEffect(x, y, color) {
+    for (let i = 0; i < 4; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 70 + Math.random() * 60;
+      // speed lines / arrow particles pointing along velocity
+      this.effects.push({
+        type: "particle",
+        x: x + (Math.random() - 0.5) * 10,
+        y: y + (Math.random() - 0.5) * 10,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: color,
+        size: 2 + Math.random() * 2,
+        life: 0.25 + Math.random() * 0.2,
+        maxLife: 0.45,
+        text: "",
+        alpha: 1
+      });
+    }
+  }
+
   update(dt) {
     for (let i = this.effects.length - 1; i >= 0; i--) {
       const e = this.effects[i];
@@ -190,6 +315,10 @@ window.EffectsManager = class EffectsManager {
         e.size = e.size + (e.maxSize - e.size) * t;
       }
       if (e.type === "flash") {
+        const t = 1 - e.life / e.maxLife;
+        e.size = e.size + (e.maxSize - e.size) * t;
+      }
+      if (e.type === "countdown") {
         const t = 1 - e.life / e.maxLife;
         e.size = e.size + (e.maxSize - e.size) * t;
       }

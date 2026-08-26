@@ -210,7 +210,8 @@ window.PRESETS = {
       knockback: 30,
       behavior: "sweep",
       color: "#c0c0c0",
-      description: "Balanced melee weapon"
+      description: "Balanced melee weapon",
+      statMods: { damage: 10, speed: 0, size: 0 }
     },
     Hammer: {
       damage: 60,
@@ -220,7 +221,8 @@ window.PRESETS = {
       knockback: 55,
       behavior: "sweep",
       color: "#8b5e3c",
-      description: "Slow heavy slam"
+      description: "Slow heavy slam",
+      statMods: { damage: 30, speed: -1, size: 5 }
     },
     Axe: {
       damage: 50,
@@ -230,7 +232,8 @@ window.PRESETS = {
       knockback: 40,
       behavior: "sweep",
       color: "#6b4c3b",
-      description: "Fast spinning attacks"
+      description: "Fast spinning attacks",
+      statMods: { damage: 20, speed: 0, size: 3 }
     },
     Spear: {
       damage: 35,
@@ -240,7 +243,8 @@ window.PRESETS = {
       knockback: 25,
       behavior: "sweep",
       color: "#a0522d",
-      description: "Long reach thrust"
+      description: "Long reach thrust",
+      statMods: { damage: 10, speed: 0, size: 0, range: 20 }
     },
     Laser: {
       damage: 35,
@@ -250,7 +254,8 @@ window.PRESETS = {
       knockback: 10,
       behavior: "shoot",
       color: "#00b4d8",
-      description: "Fast energy projectile"
+      description: "Fast energy projectile",
+      statMods: { damage: 0, speed: 0 }
     },
     Cannon: {
       damage: 80,
@@ -260,7 +265,8 @@ window.PRESETS = {
       knockback: 60,
       behavior: "shoot",
       color: "#ff8800",
-      description: "Slow powerful cannonball"
+      description: "Slow powerful cannonball",
+      statMods: { damage: 15, speed: -0.5 }
     },
     Bow: {
       damage: 30,
@@ -270,7 +276,8 @@ window.PRESETS = {
       knockback: 15,
       behavior: "shoot",
       color: "#8b4513",
-      description: "Ranged arrow shots"
+      description: "Ranged arrow shots",
+      statMods: { damage: 5, speed: 0 }
     },
     Dagger: {
       damage: 20,
@@ -280,7 +287,8 @@ window.PRESETS = {
       knockback: 12,
       behavior: "sweep",
       color: "#e0e0e0",
-      description: "Very fast short range"
+      description: "Very fast short range",
+      statMods: { damage: -5, speed: 1.5, size: -3 }
     },
     Shield: {
       damage: 10,
@@ -290,7 +298,8 @@ window.PRESETS = {
       knockback: 45,
       behavior: "orbit",
       color: "#4682b4",
-      description: "Orbiting defensive barrier"
+      description: "Orbiting defensive barrier",
+      statMods: { damage: -10, speed: -0.5, size: 3 }
     },
     Projectile: {
       damage: 25,
@@ -300,8 +309,10 @@ window.PRESETS = {
       knockback: 20,
       behavior: "shoot",
       color: "#ffd700",
-      description: "Generic projectile"
-    }
+      description: "Generic projectile",
+      statMods: { damage: 0, speed: 0 }
+    },
+    None: { damage: 0, speed: 0, size: 0 }
   },
 
   BLOCK_TYPES: {
@@ -1088,5 +1099,20 @@ window.PRESETS = {
       attract: true,
       description: "Attracts or repels nearby balls"
     }
+  },
+
+  PAD_CONFIGS: {
+    HealPad: { radius: 28, color: "#2ecc71", defaultHealAmount: 80, defaultSpawnDuration: 8, orbColor: "#2ecc71", orbRadius: 10 },
+    RotatePad: { radius: 28, color: "#f39c12", defaultRotMult: 1.5, defaultRotDuration: 6, defaultSpawnDuration: 8, orbColor: "#f39c12", orbRadius: 10 }
+  },
+
+  ORB_CONFIGS: {
+    healOrb: { radius: 10, color: "#2ecc71", healAmount: 80 },
+    rotateOrb: { radius: 10, color: "#f39c12", rotMult: 1.5, rotDuration: 6 }
+  },
+
+  MATCH_MODIFIERS: {
+    base: { wallSpeedBoost: { enabled: false, amount: 0.02, cap: 3 }, gravity: 1, scatteredOrbs: { enabled: false, type: "heal", healAmount: 80, rotMult: 1.5, rotDuration: 6 } },
+    ball: { damage2x: false, lifesteal: false, speed2x: false, rotSpeed15x: false, randomSize: false }
   }
 };

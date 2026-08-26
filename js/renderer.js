@@ -452,6 +452,529 @@ window.GameRenderer = class GameRenderer {
     }
   }
 
+  drawPad(pad, type) {
+    if (!pad) return;
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const resolvedType = (type || pad.type || 'heal').toString().toLowerCase();
+    const isHeal = resolvedType.includes('heal');
+    const s = cam.worldToScreen(pad.x, pad.y);
+    const baseSize = (pad.size || pad.width || 64) * cam.zoom;
+    const hw = baseSize / 2;
+    const hh = baseSize / 2;
+    const color = pad.color || (isHeal ? '#22c55e' : '#f97316');
+    const pulse = 0.85 + Math.sin(this.time * 2.4) * 0.15;
+    const glowAlpha = 0.14 + Math.sin(this.time * 2) * 0.05;
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+
+    if (isHeal) {
+      // outer pulse glow
+      ctx.fillStyle = this._withAlpha(color, glowAlpha * pulse);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 20 * cam.zoom * pulse;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(-hw - 8 * cam.zoom, -hh - 8 * cam.zoom, baseSize + 16 * cam.zoom, baseSize + 16 * cam.zoom, 14 * cam.zoom);
+      } else {
+        ctx.rect(-hw - 8 * cam.zoom, -hh - 8 * cam.zoom, baseSize + 16 * cam.zoom, baseSize + 16 * cam.zoom);
+      }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // semi-transparent fill with rounded corners
+      ctx.fillStyle = this._withAlpha(color, 0.2);
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(-hw, -hh, baseSize, baseSize, 12 * cam.zoom);
+      } else {
+        ctx.rect(-hw, -hh, baseSize, baseSize);
+      }
+      ctx.fill();
+
+      // subtle top highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(-hw, -hh, baseSize, baseSize * 0.34, 12 * cam.zoom);
+      } else {
+        ctx.rect(-hw, -hh, baseSize, baseSize * 0.34);
+      }
+      ctx.fill();
+
+      // dashed border
+      ctx.strokeStyle = this._withAlpha(color, 0.95);
+      ctx.lineWidth = Math.max(2, 2.4 * cam.zoom);
+      ctx.setLineDash([7 * cam.zoom, 5 * cam.zoom]);
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(-hw, -hh, baseSize, baseSize, 12 * cam.zoom);
+      } else {
+        ctx.rect(-hw, -hh, baseSize, baseSize);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // "+" icon in center
+      const plusSize = baseSize * 0.36;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2.5, 3.5 * cam.zoom);
+      ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.moveTo(-plusSize / 2, 0);
+      ctx.lineTo(plusSize / 2, 0);
+      ctx.moveTo(0, -plusSize / 2);
+      ctx.lineTo(0, plusSize / 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else {
+      // rotate pad: diamond (square rotated 45deg)
+      // pulse glow (diamond)
+      ctx.save();
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = this._withAlpha(color, glowAlpha * pulse);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 20 * cam.zoom * pulse;
+      ctx.fillRect(-hw - 8 * cam.zoom, -hh - 8 * cam.zoom, baseSize + 16 * cam.zoom, baseSize + 16 * cam.zoom);
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = this._withAlpha(color, 0.2);
+      ctx.fillRect(-hw, -hh, baseSize, baseSize);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.fillRect(-hw, -hh, baseSize, baseSize * 0.34);
+
+      ctx.strokeStyle = this._withAlpha(color, 0.95);
+      ctx.lineWidth = Math.max(2, 2.4 * cam.zoom);
+      ctx.setLineDash([7 * cam.zoom, 5 * cam.zoom]);
+      ctx.strokeRect(-hw, -hh, baseSize, baseSize);
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // rotating arrow icon "↻" upright + extra spinning tick
+      ctx.save();
+      // subtle spinning ring tick
+      ctx.rotate(this.time * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = Math.max(1.5, 2 * cam.zoom);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, 0, baseSize * 0.32, -0.4, Math.PI * 1.6);
+      ctx.stroke();
+      // arrow head at end of arc
+      const ar = baseSize * 0.32;
+      const ang = Math.PI * 1.6;
+      const ax = Math.cos(ang) * ar;
+      const ay = Math.sin(ang) * ar;
+      const headLen = 6 * cam.zoom;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax + Math.cos(ang + Math.PI * 0.55) * headLen, ay + Math.sin(ang + Math.PI * 0.55) * headLen);
+      ctx.lineTo(ax + Math.cos(ang - Math.PI * 0.55) * headLen, ay + Math.sin(ang - Math.PI * 0.55) * headLen);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // center "↻" symbol upright
+      ctx.font = `bold ${Math.max(14, Math.round(baseSize * 0.52))}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillText('↻', 1, 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('↻', 0, 0);
+    }
+
+    // label below pad (heal amount / rotMult)
+    let label = '';
+    if (isHeal) {
+      if (pad.healAmount != null) label = `+${pad.healAmount} HP`;
+      else if (pad.amount != null) label = `+${pad.amount} HP`;
+      else label = 'HEAL';
+    } else {
+      if (pad.rotMult != null) label = `x${pad.rotMult}`;
+      else if (pad.rotationMultiplier != null) label = `x${pad.rotationMultiplier}`;
+      else if (pad.mult != null) label = `x${pad.mult}`;
+      else label = 'ROTATE';
+    }
+    const labelY = hh + 16 * cam.zoom;
+    const fontSize = Math.max(8, Math.round(10 * cam.zoom));
+    ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillText(label, 1, labelY + 1);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, 0, labelY);
+
+    ctx.restore();
+  }
+
+  drawOrb(orb, type) {
+    if (!orb) return;
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const resolvedType = (type || orb.type || 'heal').toString().toLowerCase();
+    const isHeal = resolvedType.includes('heal');
+    const color = orb.color || (isHeal ? '#22c55e' : '#f97316');
+    const baseR = (orb.radius || 14) * cam.zoom;
+    // bob up/down with sin(time*2) - use orb.x as phase offset so orbs don't move identically
+    const phase = (orb.x || 0) * 0.02 + (orb.y || 0) * 0.02;
+    const bob = Math.sin(this.time * 2 + phase) * 7 * cam.zoom;
+    const s = cam.worldToScreen(orb.x, orb.y);
+    s.y += bob;
+
+    // shadow under orb
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + baseR * 1.35, baseR * 0.85, baseR * 0.38, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fill();
+
+    // outer pulse glow ring
+    const ringPulse = 1 + Math.sin(this.time * 2.2 + phase) * 0.18;
+    const ringAlpha = 0.22 + Math.sin(this.time * 2 + phase) * 0.08;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, baseR * 1.55 * ringPulse, 0, Math.PI * 2);
+    ctx.strokeStyle = this._withAlpha(color, Math.max(0, ringAlpha));
+    ctx.lineWidth = Math.max(1.5, 2 * cam.zoom);
+    ctx.stroke();
+
+    // outer soft glow
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, baseR * 1.45, 0, Math.PI * 2);
+    ctx.fillStyle = this._withAlpha(color, 0.14);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18 * cam.zoom;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // main orb filled circle with gradient
+    const grad = ctx.createRadialGradient(s.x - baseR * 0.25, s.y - baseR * 0.3, baseR * 0.15, s.x, s.y, baseR);
+    grad.addColorStop(0, this._lighten(color, 70));
+    grad.addColorStop(0.45, color);
+    grad.addColorStop(1, this._darken(color, 35));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, baseR, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.strokeStyle = this._lighten(color, 30);
+    ctx.lineWidth = Math.max(1.5, 1.8 * cam.zoom);
+    ctx.stroke();
+
+    // highlight
+    ctx.beginPath();
+    ctx.arc(s.x - baseR * 0.28, s.y - baseR * 0.3, baseR * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.fill();
+
+    if (isHeal) {
+      // "+" icon
+      const plusLen = baseR * 0.9;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2, 2.6 * cam.zoom);
+      ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(0,0,0,0.45)';
+      ctx.shadowBlur = 3;
+      ctx.beginPath();
+      ctx.moveTo(s.x - plusLen / 2, s.y);
+      ctx.lineTo(s.x + plusLen / 2, s.y);
+      ctx.moveTo(s.x, s.y - plusLen / 2);
+      ctx.lineTo(s.x, s.y + plusLen / 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else {
+      // rotate orb: central "↻" plus rotating arrow
+      // rotating arc
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(this.time * 3 + phase);
+      ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+      ctx.lineWidth = Math.max(1.4, 1.8 * cam.zoom);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, 0, baseR * 0.52, -0.5, Math.PI * 1.55);
+      ctx.stroke();
+      // arrow head
+      const ar = baseR * 0.52;
+      const ang = Math.PI * 1.55;
+      const ax = Math.cos(ang) * ar;
+      const ay = Math.sin(ang) * ar;
+      const hl = 5 * cam.zoom;
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      // compute perpendicular
+      const tx = -Math.sin(ang);
+      const ty = Math.cos(ang);
+      ctx.lineTo(ax + (Math.cos(ang + 2.4) * hl), ay + (Math.sin(ang + 2.4) * hl));
+      ctx.lineTo(ax + (Math.cos(ang - 2.0) * hl), ay + (Math.sin(ang - 2.0) * hl));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // static centered symbol - draw on top
+      const fontSize = Math.max(9, Math.round(baseR * 0.95));
+      ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // draw behind with dark outline
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillText('↻', s.x + 1, s.y + 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('↻', s.x, s.y);
+    }
+  }
+
+  drawPortal(portal, isOnCooldown) {
+    if (!portal) return;
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const s = cam.worldToScreen(portal.x, portal.y);
+    const r = (portal.radius || 28) * cam.zoom;
+    const innerR = r * 0.58;
+    const rawCooldown = isOnCooldown !== undefined ? isOnCooldown : (portal.isOnCooldown ?? portal.onCooldown ?? false);
+    const cooldownRemaining = portal.cooldownRemaining ?? portal.remaining ?? portal.cooldown ?? 0;
+    const onCooldown = !!rawCooldown || (cooldownRemaining > 0.05);
+    const baseColor = portal.color || '#a855f7';
+
+    const displayColor = onCooldown ? '#6b7280' : baseColor;
+    const alphaMul = onCooldown ? 0.45 : 1;
+
+    // outer soft glow
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r * 1.35, 0, Math.PI * 2);
+    ctx.fillStyle = this._withAlpha(displayColor, 0.12 * alphaMul);
+    ctx.shadowColor = displayColor;
+    ctx.shadowBlur = onCooldown ? 6 : 22 * cam.zoom;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // outer concentric circle
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    const outerGrad = ctx.createRadialGradient(s.x, s.y, innerR, s.x, s.y, r);
+    outerGrad.addColorStop(0, this._withAlpha(displayColor, 0.18 * alphaMul));
+    outerGrad.addColorStop(1, this._withAlpha(displayColor, 0.34 * alphaMul));
+    ctx.fillStyle = outerGrad;
+    ctx.fill();
+    ctx.strokeStyle = onCooldown ? 'rgba(107,114,128,0.85)' : this._withAlpha(baseColor, 0.95);
+    ctx.lineWidth = Math.max(2, 3 * cam.zoom);
+    if (onCooldown) ctx.setLineDash([5 * cam.zoom, 4 * cam.zoom]);
+    ctx.stroke();
+    if (onCooldown) ctx.setLineDash([]);
+
+    // inner concentric circle
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, innerR, 0, Math.PI * 2);
+    const innerGrad = ctx.createRadialGradient(s.x - innerR * 0.2, s.y - innerR * 0.2, innerR * 0.1, s.x, s.y, innerR);
+    if (onCooldown) {
+      innerGrad.addColorStop(0, '#9ca3af');
+      innerGrad.addColorStop(1, '#4b5563');
+    } else {
+      innerGrad.addColorStop(0, this._lighten(baseColor, 55));
+      innerGrad.addColorStop(0.55, baseColor);
+      innerGrad.addColorStop(1, this._darken(baseColor, 45));
+    }
+    ctx.fillStyle = this._withAlpha(innerGrad, 1); // gradient already has color; but fillStyle expects string/gradient
+    // Actually gradient is object; no need withAlpha wrapper
+    ctx.fillStyle = innerGrad;
+    if (onCooldown) ctx.globalAlpha = 0.6;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = onCooldown ? 'rgba(160,160,170,0.7)' : this._withAlpha(this._lighten(baseColor, 30), 0.95);
+    ctx.lineWidth = Math.max(1.5, 2 * cam.zoom);
+    ctx.stroke();
+
+    // swirl effect - several arcs rotating
+    if (!onCooldown) {
+      const swirlCount = 3;
+      for (let i = 0; i < swirlCount; i++) {
+        const baseAngle = this.time * 1.8 + (i / swirlCount) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, r * 0.78, baseAngle, baseAngle + Math.PI * 0.62);
+        ctx.strokeStyle = this._withAlpha('#ffffff', 0.62);
+        ctx.lineWidth = Math.max(1.2, 1.6 * cam.zoom);
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // inner swirl opposite direction
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, innerR * 0.72, -baseAngle * 1.1, -baseAngle * 1.1 + Math.PI * 0.5);
+        ctx.strokeStyle = this._withAlpha('#ffffff', 0.28);
+        ctx.lineWidth = Math.max(1, 1.2 * cam.zoom);
+        ctx.stroke();
+      }
+      // central shine
+      ctx.beginPath();
+      ctx.arc(s.x - r * 0.15, s.y - r * 0.15, r * 0.14, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fill();
+    } else {
+      // cooldown swirl dimmed static
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r * 0.78, 0, Math.PI * 1.2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = Math.max(1.2, 1.6 * cam.zoom);
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // cooldown timer text
+    if (onCooldown) {
+      const remaining = cooldownRemaining > 0 ? cooldownRemaining : 0;
+      let timerText = '';
+      if (remaining > 0.05) {
+        timerText = remaining.toFixed(1) + 's';
+      } else {
+        timerText = 'CD';
+      }
+      const fontSize = Math.max(9, Math.round(11 * cam.zoom));
+      ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // dark backdrop for readability
+      const textW = ctx.measureText(timerText).width + 12 * cam.zoom;
+      const textH = fontSize + 8 * cam.zoom;
+      ctx.fillStyle = 'rgba(0,0,0,0.62)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(s.x - textW / 2, s.y - textH / 2, textW, textH, 4 * cam.zoom);
+      else ctx.rect(s.x - textW / 2, s.y - textH / 2, textW, textH);
+      ctx.fill();
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillText(timerText, s.x, s.y);
+    }
+  }
+
+  drawWallBody(body, data) {
+    if (!body) return;
+    const ctx = this.ctx;
+    const cam = this.camera;
+    const pos = body.position || { x: 0, y: 0 };
+    const s = cam.worldToScreen(pos.x, pos.y);
+    const w = (data && (data.width || data.w) ) || 100;
+    const h = (data && (data.height || data.h) ) || 20;
+    const hw = w * cam.zoom / 2;
+    const hh = h * cam.zoom / 2;
+    const color = (data && data.color) || '#4b5563';
+    const angle = body.angle || (data && data.angle) || 0;
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(angle);
+
+    // main filled rect
+    ctx.fillStyle = color;
+    ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
+
+    // subtle gradient overlay for depth
+    const grad = ctx.createLinearGradient(0, -hh, 0, hh);
+    grad.addColorStop(0, 'rgba(255,255,255,0.16)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
+
+    // brick pattern
+    const brickH = Math.max(8 * cam.zoom, hh * 0.5);
+    const brickW = Math.max(18 * cam.zoom, hw * 0.6);
+    // Avoid too many bricks if wall is huge - clamp count
+    const rows = Math.max(1, Math.floor((hh * 2) / brickH));
+    const effectiveBrickH = (hh * 2) / rows;
+
+    ctx.strokeStyle = this._withAlpha(this._darken(color, 35), 0.95);
+    ctx.lineWidth = Math.max(1, 1.2 * cam.zoom);
+    // horizontal mortar lines
+    for (let i = 1; i < rows; i++) {
+      const y = -hh + i * effectiveBrickH;
+      ctx.beginPath();
+      ctx.moveTo(-hw, y);
+      ctx.lineTo(hw, y);
+      ctx.stroke();
+    }
+    // vertical mortar lines staggered
+    for (let row = 0; row < rows; row++) {
+      const yTop = -hh + row * effectiveBrickH;
+      const yBottom = yTop + effectiveBrickH;
+      const cols = Math.max(1, Math.ceil((hw * 2) / brickW));
+      const effectiveBrickW = (hw * 2) / cols;
+      const offset = (row % 2 === 1) ? effectiveBrickW / 2 : 0;
+      for (let c = -1; c < cols; c++) {
+        const x = -hw + c * effectiveBrickW + offset;
+        if (x <= -hw || x >= hw) continue;
+        ctx.beginPath();
+        ctx.moveTo(x, yTop);
+        ctx.lineTo(x, yBottom);
+        ctx.stroke();
+      }
+    }
+
+    // border
+    ctx.strokeStyle = this._darken(color, 45);
+    ctx.lineWidth = Math.max(1.5, 2 * cam.zoom);
+    ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
+
+    // top highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillRect(-hw, -hh, hw * 2, Math.max(2 * cam.zoom, effectiveBrickH * 0.32));
+
+    ctx.restore();
+  }
+
+  drawCountdown(number, label) {
+    if (number == null) return;
+    const ctx = this.ctx;
+    const cx = this.canvas.width / 2;
+    const cy = this.canvas.height / 2;
+    const pulse = 1 + Math.sin(this.time * 5) * 0.06;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(pulse, pulse);
+
+    const numStr = String(number);
+    // shadow / outline
+    ctx.font = `900 112px "Segoe UI", Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillText(numStr, 4, 4);
+
+    // stroke
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = 10;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(numStr, 0, 0);
+
+    // gradient fill
+    const grad = ctx.createLinearGradient(0, -56, 0, 56);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.5, '#fde68a');
+    grad.addColorStop(1, '#f59e0b');
+    ctx.fillStyle = grad;
+    ctx.fillText(numStr, 0, 0);
+
+    // inner highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = `900 112px "Segoe UI", Arial, sans-serif`;
+    // subtle inner
+    if (label) {
+      const labelStr = String(label);
+      ctx.font = `bold 22px "Segoe UI", Arial, sans-serif`;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillText(labelStr, 1, 74);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(labelStr, 0, 73);
+      // reset for potential further use
+    }
+
+    ctx.restore();
+  }
+
   drawHealthBar(x, y, width, current, max, color) {
     const ctx = this.ctx;
     const height = Math.max(4, width * 0.12);
@@ -644,6 +1167,40 @@ window.GameRenderer = class GameRenderer {
     if (gameState.specials) {
       for (const special of gameState.specials) {
         this.drawSpecialObject(special.body, special.data);
+      }
+    }
+
+    if (gameState.pads) {
+      for (const pad of gameState.pads) {
+        this.drawPad(pad, pad.type);
+      }
+    }
+
+    if (gameState.orbs) {
+      for (const orb of gameState.orbs) {
+        this.drawOrb(orb, orb.type);
+      }
+    }
+
+    if (gameState.portals) {
+      for (const portal of gameState.portals) {
+        const isOnCooldown = portal.isOnCooldown ?? portal.onCooldown ?? (portal.cooldownRemaining > 0) ?? false;
+        // normalize boolean: if cooldownRemaining used, treat >0 as cooldown
+        const cd = portal.cooldownRemaining ?? portal.remaining ?? 0;
+        const onCd = typeof isOnCooldown === 'boolean' ? (isOnCooldown || cd > 0.05) : (cd > 0.05);
+        this.drawPortal(portal, onCd);
+      }
+    }
+
+    if (gameState.walls) {
+      for (const wall of gameState.walls) {
+        if (wall.body) {
+          this.drawWallBody(wall.body, wall.data || wall);
+        } else {
+          // fallback: plain wall object with x,y,width,height
+          const fakeBody = { position: { x: wall.x ?? 0, y: wall.y ?? 0 }, angle: wall.angle || 0 };
+          this.drawWallBody(fakeBody, wall);
+        }
       }
     }
 
