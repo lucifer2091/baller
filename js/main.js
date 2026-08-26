@@ -482,7 +482,7 @@ window.Game = class Game {
     this.earclacksMode = true;
 
     // Gravity from modifiers
-    var grav = 1;
+    var grav = 0;
     if (modifiers && modifiers.base && modifiers.base.gravity !== undefined) grav = modifiers.base.gravity;
     this.physics.setGravity(grav);
 
@@ -728,7 +728,7 @@ window.Game = class Game {
     var numTeams = s.numTeams || 2;
     var arenaWidth = s.width || 1200;
     var arenaHeight = s.height || 800;
-    var gravity = s.gravity !== undefined ? s.gravity : 1;
+    var gravity = s.gravity !== undefined ? s.gravity : 0;
     var presetKeys = Object.keys(window.PRESETS.BALL_PRESETS);
     var teamNames = Object.keys(window.PRESETS.TEAMS);
     var usedTeams = teamNames.slice(0, numTeams);
@@ -819,7 +819,7 @@ window.Game = class Game {
 
     var arenaWidth = sim.width || 1200;
     var arenaHeight = sim.height || 800;
-    var gravity = sim.gravity !== undefined ? sim.gravity : 1;
+    var gravity = sim.gravity !== undefined ? sim.gravity : 0;
 
     this.physics.setGravity(gravity);
     this.arena.buildArena(arenaWidth, arenaHeight);
