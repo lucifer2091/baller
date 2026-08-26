@@ -1246,6 +1246,7 @@ window.GameRenderer = class GameRenderer {
   }
 
   _withAlpha(color, alpha) {
+    if (!color || typeof color !== 'string') return color || 'rgba(255,255,255,'+alpha+')';
     const rgb = this._hexToRgb(color);
     if (rgb) {
       return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;

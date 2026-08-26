@@ -910,7 +910,7 @@ window.PRESETS = {
       winCondition: "LastTeamStanding",
       balls: (function () {
         var balls = [];
-        var presets = Object.keys(PRESETS.BALL_PRESETS);
+        var presets = ["Basic","Sword","Hammer","Laser","Bomber","Speed","Tank","Berserker","Shield","Swarm"];
         var teams = ["Red", "Blue", "Green", "Yellow"];
         for (var i = 0; i < 50; i++) {
           balls.push({
