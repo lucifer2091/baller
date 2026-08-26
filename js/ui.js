@@ -230,9 +230,9 @@ window.UIManager = class UIManager {
 
     // Map preset grid handled dynamically in showWizardMap
 
-    // Custom map button
+    // Custom map button - hidden (single arena mode)
     var customMapBtn = document.getElementById("customMapBtn");
-    if (customMapBtn) customMapBtn.addEventListener("click", function() { self.showCustomBuilder(); });
+    if (customMapBtn) { customMapBtn.style.display = "none"; }
 
     // Modifier scattered orbs toggle
     var modScattered = document.getElementById("modScatteredOrbs");
@@ -670,17 +670,18 @@ window.UIManager = class UIManager {
     var grid = document.getElementById("mapPresetGrid");
     if (grid) {
       grid.innerHTML = "";
+      // Only Classic Box arena as requested
       var presets = (window.PRESETS && PRESETS.ARENA_PRESETS) ? PRESETS.ARENA_PRESETS : {};
-      var keys = Object.keys(presets);
-      for (var i=0;i<keys.length;i++) {
-        var name = keys[i];
-        var p = presets[name];
-        var card = document.createElement("div");
-        card.className = "preset-card" + (this.selectedMapPreset===name ? " selected" : "");
-        card.setAttribute("data-map-preset", name);
-        card.innerHTML = '<div class="preset-name">'+name+'</div><div class="preset-desc">'+(p.description||"")+'</div>';
-        card.addEventListener("click", (function(n){ return function(){ this.selectMapPreset(n); }.bind(this); }.bind(this))(name));
-        grid.appendChild(card);
+      var p = presets["Classic Box"] || { description: "Simple enclosed box arena", width:1200, height:800 };
+      var card = document.createElement("div");
+      card.className = "preset-card" + (this.selectedMapPreset==="Classic Box" ? " selected" : "");
+      card.setAttribute("data-map-preset", "Classic Box");
+      card.innerHTML = '<div class="preset-name">Classic Box</div><div class="preset-desc">'+(p.description||"1200 x 800 enclosed arena")+'</div>';
+      card.addEventListener("click", (function(){ this.selectMapPreset("Classic Box"); }.bind(this)));
+      grid.appendChild(card);
+      // Auto-select if none selected
+      if (!this.selectedMapPreset && !this.isCustomMap) {
+        this.selectMapPreset("Classic Box");
       }
     }
     this.showPanel("wizardMap");

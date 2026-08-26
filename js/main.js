@@ -33,6 +33,7 @@ window.Game = class Game {
 
     // Wizard / match state
     this.matchModifiers = null;
+    this.earclacksMode = false;
     this.countdownValue = 0;
     this.countdownTimer = 0;
     this._customDragging = null;
@@ -119,11 +120,16 @@ window.Game = class Game {
         } else {
           // Done
           if (overlay) overlay.classList.add("hidden");
-          // Unfreeze balls
+          // Unfreeze balls + give Earclacks impulse
           var allBalls = this.ballManager.getAllBalls();
           for (var i=0;i<allBalls.length;i++) {
             if (allBalls[i].body) {
               Matter.Body.setStatic(allBalls[i].body, false);
+              // Earclacks: small random impulse so balls start moving without AI
+              var ang = Math.random()*Math.PI*2;
+              var spd = 2 + Math.random()*3;
+              Matter.Body.setVelocity(allBalls[i].body, { x: Math.cos(ang)*spd, y: Math.sin(ang)*spd });
+              Matter.Body.setAngularVelocity(allBalls[i].body, (Math.random()-0.5)*0.2);
             }
           }
           this.state = "Running";
@@ -152,7 +158,10 @@ window.Game = class Game {
       this.simTime += scaledDt;
       this.roundTimer += scaledDt;
 
-      this.ballManager.updateAI(scaledDt);
+      // Earclacks mode: no AI chasing, just physics + weapon orbit
+      if (!this.earclacksMode) {
+        this.ballManager.updateAI(scaledDt);
+      }
       this.ballManager.updateWeapons(scaledDt);
       this.ballManager.checkWeaponCollisions();
       this.ballManager.updateOrbTimers(scaledDt);
@@ -459,17 +468,12 @@ window.Game = class Game {
         arenaW = preset.width || 1200;
         arenaH = preset.height || 800;
         this.arena.buildArena(arenaW, arenaH);
-        if (preset.generateBlocks) {
-          var genBlocks = preset.generateBlocks(arenaW, arenaH);
-          for (var bi=0; bi<genBlocks.length; bi++) {
-            var gb = genBlocks[bi];
-            this.blockManager.createBlock(gb.x, gb.y, { type: gb.type || "Brick", width: gb.w || 40, height: gb.h || 40 });
-          }
-        }
+        // No extra blocks for Earclacks - clean box arena only
       } else {
         this.arena.buildArena(arenaW, arenaH);
       }
     }
+    this.earclacksMode = true;
 
     // Gravity from modifiers
     var grav = 1;
@@ -1012,55 +1016,6 @@ window.Game = class Game {
       }
 
       self.camera.onMouseDown(x, y, e.button);
-
-      if (self.isBuildMode && e.button === 0 && !customBuilderVisible) {
-        var worldPos2 = self.camera.screenToWorld(x, y);
-        var tool = self.ui.currentTool;
-        var objType = self.ui.currentObjectType;
-
-        var toolLower = (tool || "").toLowerCase();
-        var objLower = (objType || "").toLowerCase();
-        if (toolLower === "ball" || objLower === "ball") {
-          var ballData = self.ui.getFormData("ballEditor") || {};
-          ballData.team = ballData.team || "Red";
-          ballData.ai = ballData.ai || "Aggressive";
-          ballData.weaponType = ballData.weaponType || ballData.weapon || "Sword";
-          var sp = self.camera.screenToWorld(x, y);
-          ballData.position = { x: sp.x, y: sp.y };
-          self.spawnBall(ballData);
-        } else if (toolLower === "block" || objLower === "block") {
-          var blockData = self.ui.getFormData("blockEditor") || {};
-          blockData.type = blockData.material || blockData.type || "Brick";
-          var sp2 = self.camera.screenToWorld(x, y);
-          blockData.position = { x: sp2.x, y: sp2.y };
-          self.spawnBlock(blockData);
-        } else if (tool === "wall") {
-          self.blockManager.createBlock(worldPos2.x, worldPos2.y, { type: "Indestructible", size: 40 });
-        } else if (tool === "delete") {
-          var allBalls = self.ballManager.getAllBalls();
-          for (var i = allBalls.length - 1; i >= 0; i--) {
-            var ball = allBalls[i];
-            var dx = worldPos2.x - ball.body.position.x;
-            var dy = worldPos2.y - ball.body.position.y;
-            if (Math.sqrt(dx * dx + dy * dy) < ball.data.size + 10) {
-              self.ballManager.removeBall(ball.id);
-              self.log("Deleted ball: " + ball.data.name, "#ff6666");
-              break;
-            }
-          }
-          var allBlocks = self.blockManager.getAllBlocks();
-          for (var i = allBlocks.length - 1; i >= 0; i--) {
-            var block = allBlocks[i];
-            var dx = worldPos2.x - block.body.position.x;
-            var dy = worldPos2.y - block.body.position.y;
-            if (Math.sqrt(dx * dx + dy * dy) < block.data.size) {
-              self.blockManager.removeBlock(block.id);
-              self.log("Deleted block", "#ff6666");
-              break;
-            }
-          }
-        }
-      }
     });
 
     this.canvas.addEventListener('mousemove', function (e) {
@@ -1167,6 +1122,7 @@ window.Game = class Game {
     this.arena.clear();
     this.physics.clear();
     this.matchModifiers = null;
+    this.earclacksMode = false;
     this.state = "Stopped";
     this.countdownValue = 0;
     this.countdownTimer = 0;
