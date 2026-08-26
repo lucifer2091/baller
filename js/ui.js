@@ -997,10 +997,10 @@ window.UIManager = class UIManager {
 
   // ──────────────────────────── SIM CONTROLS ────────────────────────────
   updateSimControls(state) {
-    var playBtn = document.getElementById("playBtn");
-    var pauseBtn = document.getElementById("pauseBtn");
-    var stopBtn = document.getElementById("stopBtn");
-    var stepBtn = document.getElementById("stepBtn");
+    var playBtn = document.querySelector('[data-action="play"]');
+    var pauseBtn = document.querySelector('[data-action="pause"]');
+    var stopBtn = document.querySelector('[data-action="stop"]');
+    var stepBtn = document.querySelector('[data-action="step"]');
 
     if (playBtn) playBtn.disabled = (state === "Playing");
     if (pauseBtn) pauseBtn.disabled = (state !== "Playing");
