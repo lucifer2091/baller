@@ -144,6 +144,15 @@ window.GameRenderer = class GameRenderer {
       ctx.fillText(name, s.x, barY - 2);
     }
 
+    if (data.damageBonus > 0) {
+      const bonusFontSize = Math.max(7, Math.round(9 * cam.zoom));
+      ctx.font = `bold ${bonusFontSize}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = '#ff8800';
+      ctx.fillText('+' + data.damageBonus + ' DMG', s.x, barY - 2 - Math.max(9, 11 * cam.zoom));
+    }
+
     const teamLabel = data.team || '';
     if (teamLabel) {
       const fontSize = Math.max(7, Math.round(8 * cam.zoom));

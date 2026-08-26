@@ -260,7 +260,8 @@ window.Game = class Game {
           team: ball.data.team,
           color: teamColor,
           teamColor: teamColor,
-          radius: ball.data.size
+          radius: ball.data.size,
+          damageBonus: ball.data.damageBonus || 0
         }
       });
     }

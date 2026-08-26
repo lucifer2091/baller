@@ -34,7 +34,6 @@ window.BallManager = class BallManager {
     // Apply weapon statMods
     var weaponPreset = window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[config.weaponType];
     if (weaponPreset && weaponPreset.statMods) {
-      if (weaponPreset.statMods.damage) data.damage += weaponPreset.statMods.damage;
       if (weaponPreset.statMods.speed) data.speed += weaponPreset.statMods.speed;
       if (weaponPreset.statMods.size) data.size += weaponPreset.statMods.size;
       if (data.speed < 0.5) data.speed = 0.5;
@@ -52,6 +51,7 @@ window.BallManager = class BallManager {
     data.lifestealHeal = 0;
     data.orbRotTimer = 0;
     data.orbRotMult = 1;
+    data.damageBonus = 0;
 
     const ball = {
       id: this.nextId++,
@@ -227,6 +227,7 @@ window.BallManager = class BallManager {
     if (ball.data.speed >= cap) return;
     ball.data.speed = Math.min(cap, ball.data.speed * 1.02);
     ball.data.wallBoostStacks = (ball.data.wallBoostStacks || 0) + 1;
+    ball.data.damageBonus = (ball.data.damageBonus || 0) + 1;
   }
 
   applyRotateOrb(ball, mult, duration) {
@@ -479,7 +480,9 @@ window.BallManager = class BallManager {
               const dy = proj.y - enemy.body.position.y;
               const dist = Math.sqrt(dx * dx + dy * dy);
               if (dist < enemy.data.size + 5) {
-                this.damageBall(enemy, proj.damage, ball);
+                var projDmg = proj.damage + (ball.data.damageBonus || 0);
+                this.damageBall(enemy, projDmg, ball);
+                ball.data.damageBonus = (ball.data.damageBonus || 0) + 2;
                 proj.life = 0;
                 break;
               }
@@ -501,10 +504,11 @@ window.BallManager = class BallManager {
               const dx = ox - enemy.body.position.x;
               const dy = oy - enemy.body.position.y;
               const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist < enemy.data.size + weapon.data.orbitRadius * 0.5) {
-                this.damageBall(enemy, weapon.data.damage, ball);
+              if (dist < enemy.data.size + 15) {
+                var hitDmg = weapon.data.damage + (ball.data.damageBonus || 0);
+                this.damageBall(enemy, hitDmg, ball);
+                ball.data.damageBonus = (ball.data.damageBonus || 0) + 2;
                 weapon.data.lastAttackTime = Date.now();
-                break;
               }
             }
           }

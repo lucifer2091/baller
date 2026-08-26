@@ -3,7 +3,7 @@ window.PRESETS = {
     name: "Ball",
     hp: 500,
     maxHp: 500,
-    damage: 25,
+    damage: 5,
     speed: 3,
     size: 25,
     mass: 5,
@@ -203,114 +203,104 @@ window.PRESETS = {
 
   WEAPON_TYPES: {
     Sword: {
-      damage: 40,
+      damage: 8,
       size: 30,
       range: 45,
       attackSpeed: 1.0,
       knockback: 30,
       behavior: "sweep",
       color: "#c0c0c0",
-      description: "Balanced melee weapon",
-      statMods: { damage: 10, speed: 0, size: 0 }
+      description: "Balanced melee weapon"
     },
     Hammer: {
-      damage: 60,
+      damage: 12,
       size: 35,
       range: 40,
       attackSpeed: 0.6,
       knockback: 55,
       behavior: "sweep",
       color: "#8b5e3c",
-      description: "Slow heavy slam",
-      statMods: { damage: 30, speed: -1, size: 5 }
+      description: "Slow heavy slam"
     },
     Axe: {
-      damage: 50,
+      damage: 10,
       size: 28,
       range: 42,
       attackSpeed: 0.8,
       knockback: 40,
       behavior: "sweep",
       color: "#6b4c3b",
-      description: "Fast spinning attacks",
-      statMods: { damage: 20, speed: 0, size: 3 }
+      description: "Fast spinning attacks"
     },
     Spear: {
-      damage: 35,
+      damage: 7,
       size: 25,
       range: 65,
       attackSpeed: 0.9,
       knockback: 25,
       behavior: "sweep",
       color: "#a0522d",
-      description: "Long reach thrust",
-      statMods: { damage: 10, speed: 0, size: 0, range: 20 }
+      description: "Long reach thrust"
     },
     Laser: {
-      damage: 35,
+      damage: 7,
       size: 15,
       range: 250,
       attackSpeed: 1.5,
       knockback: 10,
       behavior: "shoot",
       color: "#00b4d8",
-      description: "Fast energy projectile",
-      statMods: { damage: 0, speed: 0 }
+      description: "Fast energy projectile"
     },
     Cannon: {
-      damage: 80,
+      damage: 16,
       size: 20,
       range: 200,
       attackSpeed: 0.4,
       knockback: 60,
       behavior: "shoot",
       color: "#ff8800",
-      description: "Slow powerful cannonball",
-      statMods: { damage: 15, speed: -0.5 }
+      description: "Slow powerful cannonball"
     },
     Bow: {
-      damage: 30,
+      damage: 6,
       size: 12,
       range: 220,
       attackSpeed: 1.2,
       knockback: 15,
       behavior: "shoot",
       color: "#8b4513",
-      description: "Ranged arrow shots",
-      statMods: { damage: 5, speed: 0 }
+      description: "Ranged arrow shots"
     },
     Dagger: {
-      damage: 20,
+      damage: 4,
       size: 18,
       range: 30,
       attackSpeed: 2.0,
       knockback: 12,
       behavior: "sweep",
       color: "#e0e0e0",
-      description: "Very fast short range",
-      statMods: { damage: -5, speed: 1.5, size: -3 }
+      description: "Very fast short range"
     },
     Shield: {
-      damage: 10,
+      damage: 3,
       size: 40,
       range: 35,
       attackSpeed: 0.5,
       knockback: 45,
       behavior: "orbit",
       color: "#4682b4",
-      description: "Orbiting defensive barrier",
-      statMods: { damage: -10, speed: -0.5, size: 3 }
+      description: "Orbiting defensive barrier"
     },
     Projectile: {
-      damage: 25,
+      damage: 5,
       size: 10,
       range: 180,
       attackSpeed: 1.0,
       knockback: 20,
       behavior: "shoot",
       color: "#ffd700",
-      description: "Generic projectile",
-      statMods: { damage: 0, speed: 0 }
+      description: "Generic projectile"
     },
     None: { damage: 0, speed: 0, size: 0 }
   },
