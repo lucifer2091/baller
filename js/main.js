@@ -120,16 +120,15 @@ window.Game = class Game {
         } else {
           // Done
           if (overlay) overlay.classList.add("hidden");
-          // Unfreeze balls + give Earclacks impulse
+          // Unfreeze balls + fling in random directions with random force
           var allBalls = this.ballManager.getAllBalls();
           for (var i=0;i<allBalls.length;i++) {
             if (allBalls[i].body) {
               Matter.Body.setStatic(allBalls[i].body, false);
-              // Earclacks: small random impulse so balls start moving without AI
               var ang = Math.random()*Math.PI*2;
-              var spd = 2 + Math.random()*3;
+              var spd = 5 + Math.random()*15;
               Matter.Body.setVelocity(allBalls[i].body, { x: Math.cos(ang)*spd, y: Math.sin(ang)*spd });
-              Matter.Body.setAngularVelocity(allBalls[i].body, (Math.random()-0.5)*0.2);
+              Matter.Body.setAngularVelocity(allBalls[i].body, (Math.random()-0.5)*0.5);
             }
           }
           this.state = "Running";
