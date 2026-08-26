@@ -1,10 +1,8 @@
 window.PhysicsEngine = class PhysicsEngine {
   constructor() {
-    this.engine = Matter.Engine.create();
-    this.engine.positionIterations = 16;
-    this.engine.velocityIterations = 12;
-    this.engine.constraintIterations = 4;
-    this.engine.enableSleeping = false;
+    this.engine = Matter.Engine.create({
+      enableSleeping: false
+    });
     this.world = this.engine.world;
     this.engine.gravity.y = 1;
     this.engine.gravity.x = 0;
