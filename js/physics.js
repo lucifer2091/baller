@@ -2,7 +2,7 @@ window.PhysicsEngine = class PhysicsEngine {
   constructor() {
     this.engine = Matter.Engine.create();
     this.world = this.engine.world;
-    this.engine.gravity.y = 0;
+    this.engine.gravity.y = 1;
     this.engine.gravity.x = 0;
     this.collisionCallbacks = [];
     this.bodies = [];
@@ -328,7 +328,7 @@ window.PhysicsEngine = class PhysicsEngine {
     options = options || {};
     var id = this._bodyIdCounter++;
     var body = Matter.Bodies.circle(x, y, radius || 25, {
-      restitution: options.bounce !== undefined ? options.bounce : 0.95,
+      restitution: options.bounce !== undefined ? options.bounce : 1,
       friction: options.friction !== undefined ? options.friction : 0,
       density: (options.mass || 5) / 1000,
       frictionAir: options.frictionAir !== undefined ? options.frictionAir : 0,
@@ -524,7 +524,7 @@ window.PhysicsEngine = class PhysicsEngine {
   clear() {
     Matter.World.clear(this.world);
     Matter.Engine.clear(this.engine);
-    this.engine.gravity.y = 0;
+    this.engine.gravity.y = 1;
     this.engine.gravity.x = 0;
     this.bodies = [];
     this.ballBodies = [];

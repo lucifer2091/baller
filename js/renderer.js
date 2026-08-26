@@ -323,7 +323,7 @@ window.GameRenderer = class GameRenderer {
       const speed = Math.sqrt(body.velocity.x ** 2 + body.velocity.y ** 2);
       if (speed > 1) {
         const angle = Math.atan2(-body.velocity.y, -body.velocity.x);
-        const trailLen = Math.min(speed * 0.5, 40) * cam.zoom;
+        const trailLen = Math.min(speed * 0.3, 15) * cam.zoom;
         const trailGrad = ctx.createLinearGradient(
           s.x + Math.cos(angle) * r,
           s.y + Math.sin(angle) * r,

@@ -40,8 +40,8 @@ window.Game = class Game {
 
     this.setupInput();
     this.ui.init();
-    this.arena.buildArena(200, 200);
-    this.camera.goTo(100, 100, 0.9);
+    this.arena.buildArena(400, 400);
+    this.camera.goTo(200, 200, 0.9);
     this.ui.showMainMenu();
 
     window.ballManager = this.ballManager;
@@ -281,13 +281,15 @@ window.Game = class Game {
         var weaponPreset = (window.PRESETS && window.PRESETS.WEAPON_TYPES && window.PRESETS.WEAPON_TYPES[weapon.type]) || {};
         var wx = ball.body.position.x + Math.cos(weapon.data.angle) * weapon.data.orbitRadius;
         var wy = ball.body.position.y + Math.sin(weapon.data.angle) * weapon.data.orbitRadius;
+        var weaponLen = weaponPreset.range || 30;
+        if (weapon.type === "Laser" || weapon.type === "Cannon" || weapon.type === "Bow") weaponLen = 12;
         weaponsArr.push({
           body: { position: { x: wx, y: wy }, angle: weapon.data.angle },
           data: {
             type: weapon.type,
             weaponType: weapon.type,
             color: weaponPreset.color || '#c0c0c0',
-            length: weaponPreset.range || 30,
+            length: weaponLen,
             width: 8,
             radius: (weaponPreset.size || 15) / 2
           }
@@ -297,7 +299,7 @@ window.Game = class Game {
             var proj = weapon.data.projectiles[p];
             projectilesArr.push({
               body: { position: { x: proj.x, y: proj.y }, velocity: { x: proj.vx, y: proj.vy } },
-              data: { radius: 5, color: weaponPreset.color || '#ff6b35' }
+              data: { radius: 3, color: weaponPreset.color || '#ff6b35' }
             });
           }
         }
@@ -463,7 +465,7 @@ window.Game = class Game {
     this.matchModifiers = modifiers;
 
     // Arena
-    var arenaW = 200, arenaH = 200;
+    var arenaW = 400, arenaH = 400;
     if (mapData.isCustom) {
       // Custom arena already has objects; just ensure size
       arenaW = this.arena.width;
@@ -482,7 +484,7 @@ window.Game = class Game {
     this.earclacksMode = true;
 
     // Gravity from modifiers
-    var grav = 0;
+    var grav = 1;
     if (modifiers && modifiers.base && modifiers.base.gravity !== undefined) grav = modifiers.base.gravity;
     this.physics.setGravity(grav);
 
@@ -728,7 +730,7 @@ window.Game = class Game {
     var numTeams = s.numTeams || 2;
     var arenaWidth = s.width || 1200;
     var arenaHeight = s.height || 800;
-    var gravity = s.gravity !== undefined ? s.gravity : 0;
+    var gravity = s.gravity !== undefined ? s.gravity : 1;
     var presetKeys = Object.keys(window.PRESETS.BALL_PRESETS);
     var teamNames = Object.keys(window.PRESETS.TEAMS);
     var usedTeams = teamNames.slice(0, numTeams);
@@ -819,7 +821,7 @@ window.Game = class Game {
 
     var arenaWidth = sim.width || 1200;
     var arenaHeight = sim.height || 800;
-    var gravity = sim.gravity !== undefined ? sim.gravity : 0;
+    var gravity = sim.gravity !== undefined ? sim.gravity : 1;
 
     this.physics.setGravity(gravity);
     this.arena.buildArena(arenaWidth, arenaHeight);
