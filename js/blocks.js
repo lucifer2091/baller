@@ -171,32 +171,8 @@ window.BlockManager = class BlockManager {
   }
 
   checkBallBlockCollisions() {
-    if (!window.ballManager) return;
-
-    const balls = window.ballManager.getAliveBalls();
-    for (const ball of balls) {
-      for (const block of this.blocks) {
-        if (block.data.hp <= 0) continue;
-
-        const dx = ball.body.position.x - block.body.position.x;
-        const dy = ball.body.position.y - block.body.position.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = ball.data.size + block.data.size * 0.5;
-
-        if (dist < minDist) {
-          const overlap = minDist - dist;
-          if (overlap > 0 && dist > 0) {
-            const nx = dx / dist;
-            const ny = dy / dist;
-
-            this.physics.setVelocity(ball.body, {
-              x: ball.body.velocity.x + nx * overlap * 0.1,
-              y: ball.body.velocity.y + ny * overlap * 0.1
-            });
-          }
-        }
-      }
-    }
+    // Matter.js handles block-ball collisions via physics engine (restitution=1)
+    // No manual velocity override needed — it fights the collision response and drains energy
   }
 
   update(dt) {
