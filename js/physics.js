@@ -477,7 +477,11 @@ window.PhysicsEngine = class PhysicsEngine {
   }
 
   setVelocity(body, vx, vy) {
-    Matter.Body.setVelocity(body, { x: vx, y: vy });
+    if (typeof vx === "object" && vx !== null) {
+      Matter.Body.setVelocity(body, vx);
+    } else {
+      Matter.Body.setVelocity(body, { x: vx, y: vy });
+    }
   }
 
   getBodies() {

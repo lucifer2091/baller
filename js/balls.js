@@ -75,6 +75,11 @@ window.BallManager = class BallManager {
       data: data
     };
 
+    // Link physics gameData to ball.data so damage syncs both ways
+    if (ball.body && ball.body.gameData) {
+      ball.body.gameData = ball.data;
+    }
+
     this.balls.push(ball);
 
     if (!this.teams[data.team]) {

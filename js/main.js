@@ -154,7 +154,7 @@ window.Game = class Game {
         if (allBallsBefore[bi].data) allBallsBefore[bi].data._prevHp = allBallsBefore[bi].data.hp;
       }
 
-      this.physics.step(scaledDt * 16.666);
+      this.physics.step(scaledDt * 1000);
       this.simTime += scaledDt;
       this.roundTimer += scaledDt;
 

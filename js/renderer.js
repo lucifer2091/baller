@@ -74,8 +74,8 @@ window.GameRenderer = class GameRenderer {
     const halfW = (arenaData.width || 2000) / 2;
     const halfH = (arenaData.height || 2000) / 2;
 
-    const tl = cam.worldToScreen(-halfW, -halfH);
-    const br = cam.worldToScreen(halfW, halfH);
+    const tl = cam.worldToScreen(0, 0);
+    const br = cam.worldToScreen(arenaData.width || 2000, arenaData.height || 2000);
 
     const borderWidth = Math.max(4, 8 * cam.zoom);
 
@@ -982,7 +982,8 @@ window.GameRenderer = class GameRenderer {
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, height / 2);
+    if (ctx.roundRect) ctx.roundRect(x, y, width, height, height / 2);
+    else ctx.rect(x, y, width, height);
     ctx.fill();
 
     if (ratio > 0) {
@@ -993,12 +994,14 @@ window.GameRenderer = class GameRenderer {
       grad.addColorStop(1, hpColor);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.roundRect(x, y, barWidth, height, height / 2);
+      if (ctx.roundRect) ctx.roundRect(x, y, barWidth, height, height / 2);
+      else ctx.rect(x, y, barWidth, height);
       ctx.fill();
 
       ctx.fillStyle = 'rgba(255,255,255,0.2)';
       ctx.beginPath();
-      ctx.roundRect(x, y, barWidth, height / 2, height / 2);
+      if (ctx.roundRect) ctx.roundRect(x, y, barWidth, height / 2, height / 2);
+      else ctx.rect(x, y, barWidth, height / 2);
       ctx.fill();
     }
   }
