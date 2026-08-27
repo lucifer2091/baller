@@ -4,7 +4,7 @@ window.PhysicsEngine = class PhysicsEngine {
       enableSleeping: false
     });
     this.world = this.engine.world;
-    this.engine.gravity.y = 1;
+    this.engine.gravity.y = 0.5;
     this.engine.gravity.x = 0;
     this.collisionCallbacks = [];
     this.bodies = [];
@@ -526,7 +526,7 @@ window.PhysicsEngine = class PhysicsEngine {
   clear() {
     Matter.World.clear(this.world);
     Matter.Engine.clear(this.engine);
-    this.engine.gravity.y = 1;
+    this.engine.gravity.y = 0.5;
     this.engine.gravity.x = 0;
     this.bodies = [];
     this.ballBodies = [];

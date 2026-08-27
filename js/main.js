@@ -40,8 +40,8 @@ window.Game = class Game {
 
     this.setupInput();
     this.ui.init();
-    this.arena.buildArena(400, 400);
-    this.camera.goTo(200, 200, 0.9);
+    this.arena.buildArena(250, 250);
+    this.camera.goTo(125, 125, 1.2);
     this.ui.showMainMenu();
 
     window.ballManager = this.ballManager;
@@ -464,7 +464,7 @@ window.Game = class Game {
     this.matchModifiers = modifiers;
 
     // Arena
-    var arenaW = 400, arenaH = 400;
+    var arenaW = 250, arenaH = 250;
     if (mapData.isCustom) {
       // Custom arena already has objects; just ensure size
       arenaW = this.arena.width;
@@ -483,7 +483,7 @@ window.Game = class Game {
     this.earclacksMode = true;
 
     // Gravity from modifiers
-    var grav = 1;
+    var grav = 0.5;
     if (modifiers && modifiers.base && modifiers.base.gravity !== undefined) grav = modifiers.base.gravity;
     this.physics.setGravity(grav);
 
@@ -729,7 +729,7 @@ window.Game = class Game {
     var numTeams = s.numTeams || 2;
     var arenaWidth = s.width || 1200;
     var arenaHeight = s.height || 800;
-    var gravity = s.gravity !== undefined ? s.gravity : 1;
+    var gravity = s.gravity !== undefined ? s.gravity : 0.5;
     var presetKeys = Object.keys(window.PRESETS.BALL_PRESETS);
     var teamNames = Object.keys(window.PRESETS.TEAMS);
     var usedTeams = teamNames.slice(0, numTeams);
@@ -820,7 +820,7 @@ window.Game = class Game {
 
     var arenaWidth = sim.width || 1200;
     var arenaHeight = sim.height || 800;
-    var gravity = sim.gravity !== undefined ? sim.gravity : 1;
+    var gravity = sim.gravity !== undefined ? sim.gravity : 0.5;
 
     this.physics.setGravity(gravity);
     this.arena.buildArena(arenaWidth, arenaHeight);

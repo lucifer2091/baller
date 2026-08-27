@@ -477,9 +477,9 @@ window.PRESETS = {
   ARENA_PRESETS: {
     "Classic Box": {
       name: "Classic Box",
-      width: 400,
-      height: 400,
-      description: "Small arena with gravity and zero motion loss",
+      width: 250,
+      height: 250,
+      description: "Small 1v1 box with gravity",
       gravity: 1,
       generateBlocks: function (w, h) {
         var blocks = [];
@@ -1156,7 +1156,7 @@ window.PRESETS = {
   },
 
   MATCH_MODIFIERS: {
-    base: { wallSpeedBoost: { enabled: false, amount: 0.02, cap: 3 }, gravity: 1, scatteredOrbs: { enabled: false, type: "heal", healAmount: 80, rotMult: 1.5, rotDuration: 6 } },
+    base: { wallSpeedBoost: { enabled: false, amount: 0.02, cap: 3 }, gravity: 0.5, scatteredOrbs: { enabled: false, type: "heal", healAmount: 80, rotMult: 1.5, rotDuration: 6 } },
     ball: { damage2x: false, lifesteal: false, speed2x: false, rotSpeed15x: false, randomSize: false }
   }
 };
